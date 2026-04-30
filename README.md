@@ -1,37 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Expense Tracker
+
+Next.js expense tracker with local-first browser storage, PWA support, Gemini-powered parsing, and optional Google Drive backup.
 
 ## Getting Started
 
-First, run the development server:
+Install dependencies and run the local app:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Create `.env.local` from `.env.example` before using AI parsing or Google Drive sync.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Environment Variables
 
-## Learn More
+| Name | Required | Where used |
+| --- | --- | --- |
+| `GEMINI_API_KEY` | Yes for AI parsing | Server-side API routes under `/api/*` |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Yes for Google Drive sync | Browser Google OAuth flow |
 
-To learn more about Next.js, take a look at the following resources:
+Never commit `.env.local`. Add these variables in Vercel for both Production and Preview deployments.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deploying To Vercel
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+This repository is nested inside `/Users/renu/Desktop/Expense_tracker/expense-tracker`. Deploy this directory as the Vercel project root.
 
-## Deploy on Vercel
+Recommended Vercel settings:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Root Directory: `expense-tracker` when importing from the outer folder, or project root when importing this inner repo directly.
+- Framework Preset: Next.js.
+- Install Command: `npm install`.
+- Build Command: `npm run build`.
+- Output Directory: leave empty so Vercel auto-detects Next.js.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# expenseTracker
+Before deploying:
+
+```bash
+npm run lint
+npm run build
+```
+
+After deploying:
+
+- Visit `/api/health` and confirm `hasKey` is `true`.
+- Test one manual expense, one AI parsed expense, and one bulk parsed entry.
+- In Google Cloud Console, add the Vercel production domain to Authorized JavaScript origins.
+- Confirm `/sw.js` loads and test install/offline behavior on mobile.
