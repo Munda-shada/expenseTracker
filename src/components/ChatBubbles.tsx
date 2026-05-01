@@ -25,8 +25,14 @@ export default function ChatBubbles({
 
   if (messages.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 px-4 py-8">
-        <p className="text-sm font-semibold text-slate-700">Quick questions</p>
+      <div className="px-4 py-5">
+        <div className="rounded-3xl border border-indigo-100 bg-white p-4 shadow-sm">
+          <p className="text-sm font-black text-slate-900">Ask your money</p>
+          <p className="mt-1 text-xs font-medium leading-relaxed text-slate-500">
+            Try natural questions like “food spend this month”, “biggest expense this week”, or “am I over budget?”
+          </p>
+        </div>
+        <p className="mt-4 text-center text-sm font-semibold text-slate-700">Quick questions</p>
         <div className="flex w-full flex-wrap justify-center gap-2">
           {quickQuestions.map((question) => (
             <button

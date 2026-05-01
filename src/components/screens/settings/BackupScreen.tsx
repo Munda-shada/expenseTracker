@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   BackupFile,
+  DRIVE_SYNC_IMPORT_MESSAGE,
   exportEntriesCsv,
   exportEntriesPdf,
   exportJsonBackup,
@@ -23,9 +24,10 @@ const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
 
 interface Props {
   onBack: () => void
+  onOpenCloudSync?: () => void
 }
 
-export default function BackupScreen({ onBack }: Props) {
+export default function BackupScreen({ onBack, onOpenCloudSync }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [lastBackupAt, setLastBackupAt] = useState<number | null>(null)
   const [emailBackupEnabled, setEmailBackupEnabled] = useState(false)
@@ -36,6 +38,7 @@ export default function BackupScreen({ onBack }: Props) {
   const [reportPeriod, setReportPeriod] = useState<ReportPeriod>('this_month')
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null)
   const [pendingImport, setPendingImport] = useState<BackupFile | null>(null)
+  const [importedSyncFile, setImportedSyncFile] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
@@ -145,11 +148,14 @@ export default function BackupScreen({ onBack }: Props) {
     if (!file) return
     setLoading(true)
     setError(null)
+    setImportedSyncFile(false)
     try {
       const text = await file.text()
       setPendingImport(parseBackupJson(text))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not read backup file.')
+      const message = e instanceof Error ? e.message : 'Could not read backup file.'
+      setImportedSyncFile(message === DRIVE_SYNC_IMPORT_MESSAGE)
+      setError(message)
     } finally {
       setLoading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -202,8 +208,18 @@ export default function BackupScreen({ onBack }: Props) {
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
-            <p className="text-sm text-red-600">{error}</p>
+          <div className={`rounded-2xl border px-4 py-3 ${
+            importedSyncFile ? 'border-indigo-100 bg-indigo-50' : 'border-red-100 bg-red-50'
+          }`}>
+            <p className={`text-sm ${importedSyncFile ? 'text-indigo-700' : 'text-red-600'}`}>{error}</p>
+            {importedSyncFile && onOpenCloudSync && (
+              <button
+                onClick={onOpenCloudSync}
+                className="mt-3 w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white"
+              >
+                Open Cloud sync
+              </button>
+            )}
           </div>
         )}
 
@@ -277,7 +293,7 @@ export default function BackupScreen({ onBack }: Props) {
           <BackupAction
             emoji="📥"
             title="Import JSON Backup"
-            description="Restore a previous JSON backup. This overwrites local data after confirmation."
+            description="Restore an exported backup file. Drive sync files restore from Cloud sync."
             disabled={loading}
             onClick={() => fileInputRef.current?.click()}
             last
@@ -408,7 +424,7 @@ export default function BackupScreen({ onBack }: Props) {
         />
 
         <p className="text-xs text-gray-400 text-center px-4">
-          CSV is export-only. Use JSON backup when you want to restore later.
+          CSV is export-only. Use JSON backup for manual restore, or Cloud sync for expense-tracker-sync.json.
         </p>
       </div>
 

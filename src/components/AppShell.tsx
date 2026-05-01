@@ -15,7 +15,9 @@ type Tab = 'home' | 'stats' | 'lent' | 'settings'
 
 interface Props {
   focusLogInput?: boolean
+  focusAskInput?: boolean
   onLogInputFocused?: () => void
+  onAskInputFocused?: () => void
 }
 
 interface BeforeInstallPromptEvent extends Event {
@@ -30,8 +32,17 @@ function isRunningAsInstalledPwa(): boolean {
   return window.matchMedia('(display-mode: standalone)').matches || navigatorWithStandalone.standalone === true
 }
 
-export default function AppShell({ focusLogInput = false, onLogInputFocused }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>('home')
+export default function AppShell({
+  focusLogInput = false,
+  focusAskInput = false,
+  onLogInputFocused,
+  onAskInputFocused,
+}: Props) {
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    if (typeof window === 'undefined') return 'home'
+    const tab = new URL(window.location.href).searchParams.get('tab')
+    return tab === 'stats' || tab === 'lent' || tab === 'settings' ? tab : 'home'
+  })
   const [showHistory, setShowHistory] = useState(false)
   const [historyFilters, setHistoryFilters] = useState<object | null>(null)
   const [statusToast, setStatusToast] = useState<string | null>(null)
@@ -41,6 +52,14 @@ export default function AppShell({ focusLogInput = false, onLogInputFocused }: P
   const [isPwaInstalled, setIsPwaInstalled] = useState(false)
   const [canInstallPwa, setCanInstallPwa] = useState(false) // Track if PWA can be installed
   const openCountedRef = useRef(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const url = new URL(window.location.href)
+    if (!url.searchParams.get('tab')) return
+    url.searchParams.delete('tab')
+    window.history.replaceState({}, '', url.toString())
+  }, [])
 
   useEffect(() => {
     let toastTimer: ReturnType<typeof setTimeout> | null = null
@@ -206,7 +225,9 @@ export default function AppShell({ focusLogInput = false, onLogInputFocused }: P
         return (
           <HomeScreen
             focusLogInput={focusLogInput}
+            focusAskInput={focusAskInput}
             onLogInputFocused={onLogInputFocused}
+            onAskInputFocused={onAskInputFocused}
             onViewAll={() => {
               setHistoryFilters(null)
               setShowHistory(true)

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import BudgetsScreen from './settings/BudgetsScreen'
+import MonthlyPlanScreen from './settings/MonthlyPlanScreen'
 import CategoriesScreen from './settings/CategoriesScreen'
 import TagsScreen from './settings/TagsScreen'
 import QuickAddSettingsScreen from './settings/QuickAddSettingsScreen'
@@ -40,7 +41,7 @@ import DataHealthScreen from './settings/DataHealthScreen'
 import CloudSyncScreen from './settings/CloudSyncScreen'
 
 
-type SubScreen = null | 'budgets' | 'categories' | 'tags' | 'quickadd' | 'corrections' | 'backup' | 'reminders' | 'pin' | 'reconciliation' | 'yearReview' | 'preferences' | 'chatHistory' | 'recurring' | 'quickQuestions' | 'dataHealth' | 'cloudSync'
+type SubScreen = null | 'budgets' | 'monthlyPlan' | 'categories' | 'tags' | 'quickadd' | 'corrections' | 'backup' | 'reminders' | 'pin' | 'reconciliation' | 'yearReview' | 'preferences' | 'chatHistory' | 'recurring' | 'quickQuestions' | 'dataHealth' | 'cloudSync'
 
 interface Props {
   canInstallPwa?: boolean
@@ -57,6 +58,9 @@ export default function SettingsScreen({ canInstallPwa = false, onInstallPwa }: 
   if (subScreen === 'budgets') {
     return <BudgetsScreen onBack={() => setSubScreen(null)} />
   }
+  if (subScreen === 'monthlyPlan') {
+    return <MonthlyPlanScreen onBack={() => setSubScreen(null)} />
+  }
 
   if (subScreen === 'categories') {
     return <CategoriesScreen onBack={() => setSubScreen(null)} />
@@ -71,7 +75,7 @@ if (subScreen === 'corrections') {
   return <CorrectionsScreen onBack={() => setSubScreen(null)} />
 }
 if (subScreen === 'backup') {
-  return <BackupScreen onBack={() => setSubScreen(null)} />
+  return <BackupScreen onBack={() => setSubScreen(null)} onOpenCloudSync={() => setSubScreen('cloudSync')} />
 }
 if (subScreen === 'reminders') {
   return <RemindersScreen onBack={() => setSubScreen(null)} />
@@ -122,6 +126,12 @@ if (subScreen === 'cloudSync') {
             />
             <SettingsRow
               icon={WalletCards}
+              label="Monthly plan"
+              description="Edit income, budget, savings, and goal targets."
+              onPress={() => setSubScreen('monthlyPlan')}
+            />
+            <SettingsRow
+              icon={WalletCards}
               label="Monthly budgets"
               description="Set overall and category limits."
               onPress={() => setSubScreen('budgets')}
@@ -144,8 +154,8 @@ if (subScreen === 'cloudSync') {
         <SettingsGroup title="Automation">
             <SettingsRow
               icon={Repeat}
-              label="Recurring Expenses"
-              description="Review scheduled entries before saving."
+              label="Recurring Bills"
+              description="Rent, subscriptions, EMIs, salary, and repeat bills."
               onPress={() => setSubScreen('recurring')}
             />
             <SettingsRow
@@ -289,12 +299,12 @@ function SettingsRow({
         !last ? 'border-b border-slate-100' : ''
       } ${disabled ? 'opacity-40' : 'active:bg-slate-50'}`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
           <Icon className="h-5 w-5" />
         </span>
-        <span className="min-w-0">
-          <span className="block text-sm font-semibold text-slate-800">{label}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold text-slate-800">{label}</span>
           <span className="mt-0.5 block text-xs leading-relaxed text-slate-500">{description}</span>
         </span>
       </div>

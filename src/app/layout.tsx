@@ -3,7 +3,13 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: 'Expense Tracker',
-  description: 'Personal expense tracker',
+  description: 'Private offline-first expense tracker with AI logging, budgets, reminders, goals, and sync.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    title: 'Expenses',
+    statusBarStyle: 'default',
+  },
 };
 
 export default function RootLayout({
@@ -16,6 +22,8 @@ export default function RootLayout({
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#6366f1" />
+        <meta name="color-scheme" content="light" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
         <script src="https://accounts.google.com/gsi/client" async defer />
       </head>
       <body>

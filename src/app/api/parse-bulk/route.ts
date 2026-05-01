@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAppAccess } from '@/lib/appAccess'
 import { getGeminiApiKey, getGeminiUrl, type GeminiPart } from '@/lib/gemini'
 import { getTodayString, getYesterdayString } from '@/lib/utils'
 
@@ -33,6 +34,9 @@ const GEMINI_API_KEY = getGeminiApiKey()
 const GEMINI_URL = getGeminiUrl()
 
 export async function POST(req: NextRequest) {
+  const accessError = requireAppAccess(req)
+  if (accessError) return accessError
+
   // 1. Safe runtime guard
   if (!GEMINI_API_KEY) {
     return NextResponse.json({ error: 'GEMINI_API_KEY is not configured' }, { status: 500 })

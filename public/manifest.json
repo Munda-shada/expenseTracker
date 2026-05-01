@@ -1,12 +1,37 @@
 {
   "name": "Expense Tracker",
   "short_name": "Expenses",
+  "description": "A private, offline-first expense tracker with AI logging, budgets, goals, and reminders.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#6366f1",
+  "categories": ["finance", "productivity"],
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Log expense",
+      "short_name": "Log",
+      "description": "Open directly to quick expense logging.",
+      "url": "/?focusLog=1",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Ask spending",
+      "short_name": "Ask",
+      "description": "Ask a question about your money.",
+      "url": "/?focusAsk=1",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Lent and borrowed",
+      "short_name": "Lent",
+      "description": "Review lent and borrowed money.",
+      "url": "/?tab=lent",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
   ]
 }

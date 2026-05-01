@@ -1,5 +1,11 @@
 import { v4 as uuidv4 } from 'uuid'
-import { getGoogleAccessToken } from './googleAuth'
+import {
+  GOOGLE_RECONNECT_MESSAGE,
+  clearGoogleAccessToken,
+  getGoogleAccessToken,
+  isGoogleAuthInteractionRequired,
+  revokeGoogleAccessToken,
+} from './googleAuth'
 import {
   SYNCABLE_STORE_NAMES,
   SyncableStoreName,
@@ -56,6 +62,10 @@ export interface SyncStatus {
   conflictCount: number
   driveFileId: string | null
   inProgress: boolean
+}
+
+interface RunCloudSyncOptions {
+  interactive?: boolean
 }
 
 const LOCAL_ONLY_SETTINGS = new Set<keyof Settings>([
@@ -398,7 +408,10 @@ async function applyMergedSyncFile(merged: SyncFile): Promise<void> {
   }
 }
 
-export async function runCloudSync(): Promise<SyncStatus> {
+export async function runCloudSync(options: RunCloudSyncOptions = {}): Promise<SyncStatus> {
+  const interactive = options.interactive ?? true
+  let returnStatusAfterQuietAuthError = false
+
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     throw new Error('Cloud sync needs an internet connection.')
   }
@@ -411,7 +424,7 @@ export async function runCloudSync(): Promise<SyncStatus> {
   await setSetting('lastSyncError', '')
 
   try {
-    const token = await getGoogleAccessToken()
+    const token = await getGoogleAccessToken({ interactive })
     const local = await buildLocalSyncFile()
     const remote = await pullRemoteSyncFile(token)
     const merged = mergeSyncState(local, remote)
@@ -425,11 +438,26 @@ export async function runCloudSync(): Promise<SyncStatus> {
     return getSyncStatus()
   } catch (error) {
     await setSetting('lastSyncStatus', 'error')
-    await setSetting('lastSyncError', error instanceof Error ? error.message : 'Cloud sync failed.')
-    throw error
+    const message = isGoogleAuthInteractionRequired(error)
+      ? GOOGLE_RECONNECT_MESSAGE
+      : error instanceof Error
+        ? error.message
+        : 'Cloud sync failed.'
+    await setSetting('lastSyncError', message)
+    if (!interactive && isGoogleAuthInteractionRequired(error)) {
+      returnStatusAfterQuietAuthError = true
+    } else {
+      throw error
+    }
   } finally {
     await setSetting('syncInProgress', false)
   }
+
+  if (returnStatusAfterQuietAuthError) {
+    return getSyncStatus()
+  }
+
+  return getSyncStatus()
 }
 
 export async function getSyncStatus(): Promise<SyncStatus> {
@@ -472,6 +500,25 @@ export async function getSyncStatus(): Promise<SyncStatus> {
   }
 }
 
+export async function disconnectCloudSync(): Promise<SyncStatus> {
+  await Promise.all([
+    setSetting('syncEnabled', false),
+    setSetting('syncDriveFileId', null),
+    setSetting('lastSyncStatus', 'idle'),
+    setSetting('lastSyncError', ''),
+    setSetting('syncInProgress', false),
+  ])
+
+  try {
+    await revokeGoogleAccessToken()
+  } catch (error) {
+    console.warn('Could not revoke Google Drive token:', error)
+    clearGoogleAccessToken()
+  }
+
+  return getSyncStatus()
+}
+
 export async function scheduleCloudSync(reason = 'scheduled'): Promise<void> {
   const [enabled, autoEnabled, inProgress, lastSyncAt, intervalMinutes] = await Promise.all([
     getSetting('syncEnabled'),
@@ -487,6 +534,6 @@ export async function scheduleCloudSync(reason = 'scheduled'): Promise<void> {
   if (reason !== 'mutation' && lastSyncAt && Date.now() - lastSyncAt < intervalMs) return
 
   window.setTimeout(() => {
-    runCloudSync().catch((error: Error) => console.error('Cloud sync failed:', error))
+    runCloudSync({ interactive: false }).catch((error: Error) => console.error('Cloud sync failed:', error))
   }, reason === 'mutation' ? 1500 : 100)
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { setSetting, getCategories, getDB } from '@/lib/db'
+import { setSetting, getCategories, getDB, setBudget } from '@/lib/db'
 import { Category } from '@/lib/types'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -10,10 +10,14 @@ interface Props {
 }
 
 export default function Onboarding({ onComplete }: Props) {
-  const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [categories, setCategories] = useState<Category[]>([])
   const [newCategoryName, setNewCategoryName] = useState('')
   const [newCategoryEmoji, setNewCategoryEmoji] = useState('📦')
+  const [monthlyIncome, setMonthlyIncome] = useState('')
+  const [monthlyBudget, setMonthlyBudget] = useState('')
+  const [monthlySavings, setMonthlySavings] = useState('')
+  const [preferredCurrency, setPreferredCurrency] = useState<'INR' | 'USD' | 'EUR' | 'GBP'>('INR')
   const [reminderEnabled, setReminderEnabled] = useState(true)
   const [reminderTime, setReminderTime] = useState('21:00')
   const [loading, setLoading] = useState(false)
@@ -67,6 +71,22 @@ export default function Onboarding({ onComplete }: Props) {
 
   const handleFinish = async () => {
     setLoading(true)
+    const now = Date.now()
+    const income = Number(monthlyIncome)
+    const budget = Number(monthlyBudget)
+    const savings = Number(monthlySavings)
+    await setSetting('preferredCurrency', preferredCurrency)
+    await setSetting('monthlyIncomeEstimate', Number.isFinite(income) ? Math.max(income, 0) : 0)
+    await setSetting('monthlySavingsTarget', Number.isFinite(savings) ? Math.max(savings, 0) : 0)
+    if (Number.isFinite(budget) && budget > 0) {
+      await setBudget({
+        id: 'budget-overall',
+        categoryId: 'overall',
+        monthlyLimit: budget,
+        createdAt: now,
+        updatedAt: now,
+      })
+    }
     await setSetting('reminderEnabled', reminderEnabled)
     await setSetting('reminderTime', reminderTime)
     await setSetting('firstLaunchCompleted', true)
@@ -77,7 +97,7 @@ export default function Onboarding({ onComplete }: Props) {
     <div className="min-h-screen flex flex-col">
       {/* Progress bar */}
       <div className="flex gap-1 p-4">
-        {[1, 2, 3].map((s) => (
+        {[1, 2, 3, 4].map((s) => (
           <div
             key={s}
             className={`h-1 flex-1 rounded-full transition-colors duration-300 ${
@@ -199,8 +219,54 @@ export default function Onboarding({ onComplete }: Props) {
         </div>
       )}
 
-      {/* Step 3 — Reminder */}
+      {/* Step 3 — Monthly plan */}
       {step === 3 && (
+        <div className="flex flex-col flex-1 px-6 pt-4 gap-5">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">Monthly plan</h2>
+            <p className="text-gray-500 text-sm mt-1">
+              Optional, but it unlocks safe-to-spend and projected savings on the dashboard.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <label className="block rounded-2xl bg-gray-50 px-4 py-3">
+              <span className="block text-xs font-semibold uppercase tracking-wide text-gray-400">Currency</span>
+              <select
+                value={preferredCurrency}
+                onChange={(e) => setPreferredCurrency(e.target.value as 'INR' | 'USD' | 'EUR' | 'GBP')}
+                className="mt-1 w-full bg-transparent text-sm font-semibold text-gray-800 outline-none"
+              >
+                <option value="INR">Indian Rupee</option>
+                <option value="USD">US Dollar</option>
+                <option value="EUR">Euro</option>
+                <option value="GBP">British Pound</option>
+              </select>
+            </label>
+            <PlanInput label="Monthly income" value={monthlyIncome} onChange={setMonthlyIncome} placeholder="e.g. 50000" />
+            <PlanInput label="Monthly spend budget" value={monthlyBudget} onChange={setMonthlyBudget} placeholder="e.g. 25000" />
+            <PlanInput label="Savings target" value={monthlySavings} onChange={setMonthlySavings} placeholder="e.g. 10000" />
+          </div>
+
+          <div className="mt-auto grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setStep(4)}
+              className="rounded-xl bg-gray-100 py-3 text-base font-semibold text-gray-500 active:scale-95 transition-transform"
+            >
+              Skip
+            </button>
+            <button
+              onClick={() => setStep(4)}
+              className="rounded-xl bg-indigo-500 py-3 text-base font-semibold text-white active:scale-95 transition-transform"
+            >
+              Continue →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 4 — Reminder */}
+      {step === 4 && (
         <div className="flex flex-col flex-1 items-center justify-center px-6 gap-6">
           <div className="text-6xl">🔔</div>
           <div className="text-center">
@@ -252,5 +318,31 @@ export default function Onboarding({ onComplete }: Props) {
         </div>
       )}
     </div>
+  )
+}
+
+function PlanInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  placeholder: string
+}) {
+  return (
+    <label className="block rounded-2xl bg-gray-50 px-4 py-3">
+      <span className="block text-xs font-semibold uppercase tracking-wide text-gray-400">{label}</span>
+      <input
+        type="number"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        inputMode="decimal"
+        className="mt-1 w-full bg-transparent text-sm font-semibold text-gray-800 outline-none placeholder:text-gray-300"
+      />
+    </label>
   )
 }

@@ -29,16 +29,16 @@ export default function ModalShell({
     >
       <div className="flex max-h-[calc(100dvh-0.75rem)] min-h-0 w-full max-w-120 flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl">
         <div className="shrink-0 border-b border-gray-100 bg-white px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="mobile-safe-row flex items-center justify-between gap-3">
             <button
               onClick={onClose}
-              className="p-1 text-gray-400"
+              className="shrink-0 p-1 text-gray-400"
               aria-label={`Close ${title}`}
             >
               <X className="h-5 w-5" />
             </button>
-            <p className="font-semibold text-gray-800">{title}</p>
-            <div className="flex min-w-7 justify-end">{headerEnd}</div>
+            <p className="min-w-0 truncate font-semibold text-gray-800">{title}</p>
+            <div className="flex min-w-7 shrink-0 justify-end">{headerEnd}</div>
           </div>
         </div>
 

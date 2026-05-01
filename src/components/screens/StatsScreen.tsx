@@ -561,11 +561,11 @@ export default function StatsScreen({ onNavigateToHistory }: Props) {
       <div className="space-y-4 px-4 pt-4">
         <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-black text-slate-900">Local insights</p>
               <p className="mt-0.5 text-xs font-medium text-slate-400">Private signals generated from this device.</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex shrink-0 gap-2">
               <button
                 onClick={() => exportReport('csv')}
                 disabled={reporting}
@@ -607,15 +607,15 @@ export default function StatsScreen({ onNavigateToHistory }: Props) {
         </section>
 
         <section className="rounded-[1.75rem] border border-indigo-100 bg-white p-4 shadow-sm">
-          <div className="flex items-start justify-between gap-3">
-            <div>
+          <div className="mobile-safe-row flex items-start justify-between gap-3">
+            <div className="min-w-0">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-indigo-500">Total spent</p>
-              <p className="mt-1 text-3xl font-black text-slate-950">{formatCurrency(totalExpense)}</p>
+              <p className="mt-1 truncate text-3xl font-black text-slate-950">{formatCurrency(totalExpense)}</p>
               <p className="mt-1 text-xs font-medium text-slate-400">
                 {filteredExpenses.length} expenses across {activeDays} active days
               </p>
             </div>
-            <div className={`flex items-center gap-1 rounded-2xl px-2.5 py-1.5 text-xs font-black ${
+            <div className={`flex shrink-0 items-center gap-1 rounded-2xl px-2.5 py-1.5 text-xs font-black ${
               comparisonDiff <= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'
             }`}>
               {comparisonDiff <= 0 ? <TrendingDown className="h-3.5 w-3.5" /> : <TrendingUp className="h-3.5 w-3.5" />}
@@ -682,23 +682,23 @@ export default function StatsScreen({ onNavigateToHistory }: Props) {
             {overallBudget && (
               <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="mb-3 flex items-start justify-between gap-3">
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-black text-slate-900">Budget burn</p>
                     <p className="mt-0.5 text-xs font-medium text-slate-400">
                       {period === 'this_month' ? 'Projected from this month pace' : 'Actual spend in this period'}
                     </p>
                   </div>
-                  <Gauge className={`h-5 w-5 ${
+                  <Gauge className={`h-5 w-5 shrink-0 ${
                     projectedBudgetPct >= 100 ? 'text-rose-500' : projectedBudgetPct >= 80 ? 'text-amber-500' : 'text-indigo-500'
                   }`} />
                 </div>
-                <div className="flex items-end justify-between gap-3">
-                  <div>
-                    <p className="text-2xl font-black text-slate-950">{formatCurrency(totalExpense)}</p>
+                <div className="mobile-safe-row flex items-end justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-2xl font-black text-slate-950">{formatCurrency(totalExpense)}</p>
                     <p className="text-xs font-semibold text-slate-400">of {formatCurrency(overallBudget.monthlyLimit)}</p>
                   </div>
-                  <div className="text-right">
-                    <p className={`text-sm font-black ${
+                  <div className="max-w-[48%] shrink-0 text-right">
+                    <p className={`truncate text-sm font-black ${
                       projectedBudgetPct >= 100 ? 'text-rose-600' : projectedBudgetPct >= 80 ? 'text-amber-600' : 'text-indigo-600'
                     }`}>
                       {period === 'this_month' ? `${formatCurrency(projectedSpend)} projected` : `${budgetUsedPct.toFixed(0)}% used`}
@@ -752,7 +752,7 @@ export default function StatsScreen({ onNavigateToHistory }: Props) {
             {categoryStats.length > 0 && (
               <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="mb-4 flex items-start justify-between gap-3">
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-black text-slate-900">Category mix</p>
                     <p className="mt-0.5 text-xs font-medium text-slate-400">
                       {topCategory
@@ -762,13 +762,13 @@ export default function StatsScreen({ onNavigateToHistory }: Props) {
                   </div>
                   <button
                     onClick={() => setShowHeatmap(true)}
-                    className="rounded-xl bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-600"
+                    className="shrink-0 rounded-xl bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-600"
                   >
                     Heatmap
                   </button>
                 </div>
-                <div className="flex items-center gap-5">
-                  <div className="relative h-36 w-36 shrink-0">
+                <div className="mobile-safe-row flex flex-col gap-4 min-[380px]:flex-row min-[380px]:items-center min-[380px]:gap-5">
+                  <div className="relative mx-auto h-36 w-36 shrink-0 min-[380px]:mx-0">
                     <Doughnut data={doughnutData} options={doughnutOptions} />
                     <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
                       <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Top</span>
@@ -868,7 +868,7 @@ export default function StatsScreen({ onNavigateToHistory }: Props) {
                 <p className="mb-3 text-sm font-black text-slate-900">Biggest category moves</p>
                 <div className="space-y-2">
                   {topCategoryComparisons.map((item) => (
-                    <div key={item.category.id} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-3 py-2.5">
+                    <div key={item.category.id} className="mobile-safe-row flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-3 py-2.5">
                       <span className="min-w-0 truncate text-sm font-bold text-slate-700">
                         {item.category.emoji} {item.category.name}
                       </span>
@@ -883,12 +883,12 @@ export default function StatsScreen({ onNavigateToHistory }: Props) {
 
             {tagStats.length > 0 && (
               <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="mb-3 flex items-center justify-between">
-                  <div>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
                     <p className="text-sm font-black text-slate-900">Top tags</p>
                     <p className="mt-0.5 text-xs font-medium text-slate-400">Tap a tag to open matching entries</p>
                   </div>
-                  <Hash className="h-5 w-5 text-indigo-500" />
+                  <Hash className="h-5 w-5 shrink-0 text-indigo-500" />
                 </div>
                 <div className="space-y-3">
                   {tagStats.map((stat) => (
@@ -977,8 +977,8 @@ function InsightCard({
   return (
     <div className="rounded-[1.25rem] border border-slate-200 bg-white p-3 shadow-sm">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{title}</p>
-        <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${toneClass}`}>
+        <p className="min-w-0 truncate text-xs font-bold uppercase tracking-wide text-slate-400">{title}</p>
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${toneClass}`}>
           <Icon className="h-4 w-4" />
         </span>
       </div>
@@ -1002,11 +1002,11 @@ function ChartPanel({
   return (
     <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-black text-slate-900">{title}</p>
           <p className="mt-0.5 text-xs font-medium text-slate-400">{subtitle}</p>
         </div>
-        <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
           <Icon className="h-4 w-4" />
         </span>
       </div>

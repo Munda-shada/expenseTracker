@@ -3,15 +3,19 @@
 import { useEffect, useRef, useState } from 'react'
 import Onboarding from '@/components/Onboarding'
 import AppShell from '@/components/AppShell'
+import AppAccessLockScreen from '@/components/AppAccessLockScreen'
 import PinUnlockScreen from '@/components/PinUnlockScreen'
 import { checkDailyReminder, checkPowerNotifications } from '@/lib/reminders'
 import { checkWeeklyEmailBackup } from '@/lib/emailBackup'
 import { registerServiceWorker } from '@/lib/serviceWorker'
 
 type AppState = 'loading' | 'onboarding' | 'home'
+type AccessState = 'checking' | 'locked' | 'unlocked'
 
 export default function Home() {
   const [appState, setAppState] = useState<AppState>('loading')
+  const [accessState, setAccessState] = useState<AccessState>('checking')
+  const [accessConfigured, setAccessConfigured] = useState(true)
   const [pinHash, setPinHash] = useState<string | null>(null)
   const [biometricCredentialId, setBiometricCredentialId] = useState<string | null>(null)
   const [pinUnlocked, setPinUnlocked] = useState(false)
@@ -20,9 +24,24 @@ export default function Home() {
     if (typeof window === 'undefined') return false
     return new URL(window.location.href).searchParams.get('focusLog') === '1'
   })
+  const [focusAskInput, setFocusAskInput] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return new URL(window.location.href).searchParams.get('focusAsk') === '1'
+  })
 
   useEffect(() => {
-    import('@/lib/db').then(({ getDB, getSetting }) => {
+    const loadApp = async () => {
+      try {
+        const sessionRes = await fetch('/api/auth/session', { cache: 'no-store' })
+        const session = await sessionRes.json()
+        setAccessConfigured(!!session.configured)
+        setAccessState(session.authenticated ? 'unlocked' : 'locked')
+      } catch {
+        setAccessConfigured(false)
+        setAccessState('locked')
+      }
+
+      const { getDB, getSetting } = await import('@/lib/db')
       getDB().then(async () => {
         const [
           completed,
@@ -44,7 +63,9 @@ export default function Home() {
         setPinUnlocked(!(pinEnabled && storedPinHash))
         setAppState(completed ? 'home' : 'onboarding')
       }).catch((e: Error) => console.error(e))
-    })
+    }
+
+    loadApp()
     registerServiceWorker()
   }, [])
 
@@ -52,8 +73,10 @@ export default function Home() {
     if (typeof window === 'undefined') return
     const url = new URL(window.location.href)
     const shouldFocusLog = url.searchParams.get('focusLog') === '1'
-    if (!shouldFocusLog) return
+    const shouldFocusAsk = url.searchParams.get('focusAsk') === '1'
+    if (!shouldFocusLog && !shouldFocusAsk) return
     url.searchParams.delete('focusLog')
+    url.searchParams.delete('focusAsk')
     window.history.replaceState({}, '', url.toString())
   }, [])
 
@@ -103,7 +126,7 @@ export default function Home() {
     return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [pinHash, pinUnlocked])
 
-  if (appState === 'loading') {
+  if (appState === 'loading' || accessState === 'checking') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="flex flex-col items-center gap-3">
@@ -111,6 +134,15 @@ export default function Home() {
           <p className="text-gray-400 text-sm">Loading...</p>
         </div>
       </div>
+    )
+  }
+
+  if (accessState === 'locked') {
+    return (
+      <AppAccessLockScreen
+        configured={accessConfigured}
+        onUnlock={() => setAccessState('unlocked')}
+      />
     )
   }
 
@@ -128,5 +160,12 @@ export default function Home() {
     )
   }
 
-  return <AppShell focusLogInput={focusLogInput} onLogInputFocused={() => setFocusLogInput(false)} />
+  return (
+    <AppShell
+      focusLogInput={focusLogInput}
+      focusAskInput={focusAskInput}
+      onLogInputFocused={() => setFocusLogInput(false)}
+      onAskInputFocused={() => setFocusAskInput(false)}
+    />
+  )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Filter, Search, X } from 'lucide-react'
+import { CalendarDays, Filter, Layers3, Search, X } from 'lucide-react'
 import { getAllEntries, getCategories } from '@/lib/db'
 import { Entry, Category, EntrySource } from '@/lib/types'
 import { formatCurrency, formatDisplayDate, getTodayString, timeAgo } from '@/lib/utils'
@@ -129,6 +129,21 @@ export default function HistoryScreen({ preFilters }: Props) {
   }, {})
 
   const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a))
+  const calendarDays = sortedDates.slice(0, 14).map((date) => ({
+    date,
+    count: grouped[date].length,
+    total: grouped[date]
+      .filter((entry) => entry.type === 'expense')
+      .reduce((sum, entry) => sum + entry.amount, 0),
+  }))
+  const duplicateCandidates = filtered.filter((entry, index) =>
+    filtered.slice(0, index).some((other) =>
+      other.id !== entry.id &&
+      other.date === entry.date &&
+      other.amount === entry.amount &&
+      (other.note || other.rawInput).toLowerCase() === (entry.note || entry.rawInput).toLowerCase()
+    )
+  )
 
   const getCategoryNames = (ids: string[]) =>
     ids.map((id) => categories.find((c) => c.id === id)?.name ?? '').filter(Boolean).join(', ')
@@ -157,14 +172,14 @@ export default function HistoryScreen({ preFilters }: Props) {
 
       {/* Header */}
       <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-4 pb-3 pt-5 backdrop-blur">
-        <div className="flex items-center justify-between mb-3">
-          <div>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-500">Ledger</p>
             <h1 className="text-2xl font-bold text-slate-950">History</h1>
           </div>
           <button
             onClick={() => setShowFilters(true)}
-            className="relative flex items-center gap-1.5 rounded-2xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-600"
+            className="relative flex shrink-0 items-center gap-1.5 rounded-2xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-600"
           >
             <Filter className="h-4 w-4" />
             Filter
@@ -177,14 +192,14 @@ export default function HistoryScreen({ preFilters }: Props) {
         </div>
 
         {/* Search */}
-        <div className="flex items-center gap-2 rounded-2xl bg-slate-100 px-3 py-2.5">
+        <div className="mobile-safe-row flex items-center gap-2 rounded-2xl bg-slate-100 px-3 py-2.5">
           <Search className="h-4 w-4 shrink-0 text-slate-400" />
           <input
             type="text"
             value={filters.search ?? ''}
             onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
             placeholder="Search entries..."
-            className="flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+            className="min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
           />
           {filters.search && (
             <button
@@ -200,27 +215,27 @@ export default function HistoryScreen({ preFilters }: Props) {
         {activeFilterCount > 0 && (
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             {filters.type !== 'all' && (
-              <span className="text-xs bg-indigo-50 text-indigo-500 px-2 py-1 rounded-full capitalize">
+              <span className="max-w-full truncate rounded-full bg-indigo-50 px-2 py-1 text-xs capitalize text-indigo-500">
                 {filters.type}
               </span>
             )}
             {filters.source !== 'all' && (
-              <span className="text-xs bg-indigo-50 text-indigo-500 px-2 py-1 rounded-full capitalize">
+              <span className="max-w-full truncate rounded-full bg-indigo-50 px-2 py-1 text-xs capitalize text-indigo-500">
                 {filters.source}
               </span>
             )}
             {(filters.tags ?? []).map((tag) => (
-              <span key={tag} className="text-xs bg-indigo-50 text-indigo-500 px-2 py-1 rounded-full">
+              <span key={tag} className="max-w-full truncate rounded-full bg-indigo-50 px-2 py-1 text-xs text-indigo-500">
                 #{tag}
               </span>
             ))}
             {(filters.amountMin || filters.amountMax) && (
-              <span className="text-xs bg-indigo-50 text-indigo-500 px-2 py-1 rounded-full">
+              <span className="max-w-full truncate rounded-full bg-indigo-50 px-2 py-1 text-xs text-indigo-500">
                 {filters.amountMin || '0'}-{filters.amountMax || 'any'}
               </span>
             )}
             {filters.bulkBatchId && (
-              <span className="text-xs bg-indigo-50 text-indigo-500 px-2 py-1 rounded-full">
+              <span className="max-w-full truncate rounded-full bg-indigo-50 px-2 py-1 text-xs text-indigo-500">
                 Bulk batch
               </span>
             )}
@@ -230,6 +245,52 @@ export default function HistoryScreen({ preFilters }: Props) {
             >
               Reset
             </button>
+          </div>
+        )}
+
+        {calendarDays.length > 0 && (
+          <div className="mt-3">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-400">
+                <CalendarDays className="h-3.5 w-3.5" /> Calendar
+              </p>
+              {duplicateCandidates.length > 0 && (
+                <button
+                  onClick={() => setFilters((f) => ({ ...f, search: duplicateCandidates[0].note || duplicateCandidates[0].rawInput }))}
+                  className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700"
+                >
+                  <Layers3 className="h-3 w-3" />
+                  {duplicateCandidates.length} possible duplicate{duplicateCandidates.length === 1 ? '' : 's'}
+                </button>
+              )}
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {calendarDays.map((day) => {
+                const selected = filters.dateFrom === day.date && filters.dateTo === day.date
+                const parsed = new Date(`${day.date}T00:00:00`)
+                return (
+                  <button
+                    key={day.date}
+                    onClick={() => setFilters((f) => ({
+                      ...f,
+                      dateFrom: selected ? '' : day.date,
+                      dateTo: selected ? '' : day.date,
+                    }))}
+                    className={`min-w-16 rounded-2xl px-3 py-2 text-left shadow-sm ${
+                      selected ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700'
+                    }`}
+                  >
+                    <span className="block text-[10px] font-bold uppercase opacity-70">
+                      {parsed.toLocaleDateString('en-IN', { weekday: 'short' })}
+                    </span>
+                    <span className="block text-base font-black">{parsed.getDate()}</span>
+                    <span className="block truncate text-[10px] font-semibold opacity-70">
+                      {day.count} · {formatCurrency(day.total)}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
         )}
       </div>
@@ -278,12 +339,12 @@ export default function HistoryScreen({ preFilters }: Props) {
               return (
                 <div key={date}>
                   {/* Date header */}
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <p className="min-w-0 truncate text-xs font-semibold uppercase tracking-wide text-gray-500">
                       {formatDisplayDate(date)}
                     </p>
                     {dayTotal > 0 && (
-                      <p className="text-xs font-semibold text-gray-500">
+                      <p className="shrink-0 text-xs font-semibold text-gray-500">
                         {formatCurrency(dayTotal)}
                       </p>
                     )}
@@ -295,7 +356,7 @@ export default function HistoryScreen({ preFilters }: Props) {
                       <button
                         key={entry.id}
                         onClick={() => setSelectedEntry(entry)}
-                        className="w-full flex items-center justify-between bg-white rounded-xl px-4 py-3 shadow-sm active:scale-[0.98] transition-transform text-left"
+                        className="mobile-safe-row flex w-full items-center justify-between rounded-xl bg-white px-4 py-3 text-left shadow-sm transition-transform active:scale-[0.98]"
                       >
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           {/* Category emoji */}
@@ -308,7 +369,7 @@ export default function HistoryScreen({ preFilters }: Props) {
                             <p className="text-sm font-medium text-gray-800 truncate">
                               {entry.note || getCategoryNames(entry.categoryIds)}
                             </p>
-                            <p className="text-xs text-gray-400 mt-0.5">
+                            <p className="mt-0.5 truncate text-xs text-gray-400">
                               {getCategoryNames(entry.categoryIds)}
                             </p>
                             {entry.tags.length > 0 && (
@@ -325,8 +386,8 @@ export default function HistoryScreen({ preFilters }: Props) {
                             )}
                           </div>
                         </div>
-                        <div className="text-right ml-3 shrink-0">
-                          <p className={`text-sm font-semibold ${
+                        <div className="ml-3 max-w-[42%] shrink-0 text-right">
+                          <p className={`truncate text-sm font-semibold ${
                             entry.type === 'income' ? 'text-green-600' : 'text-gray-800'
                           }`}>
                             {entry.type === 'income' ? '+' : '-'}{formatCurrency(entry.amount)}

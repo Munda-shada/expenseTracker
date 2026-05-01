@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { CheckCircle2, Cloud, RefreshCw, TriangleAlert, WifiOff } from 'lucide-react'
 import { clearSyncConflicts, getSyncConflicts, setSetting } from '@/lib/db'
-import { getSyncStatus, runCloudSync, SyncStatus } from '@/lib/syncEngine'
+import { GOOGLE_RECONNECT_MESSAGE } from '@/lib/googleAuth'
+import { disconnectCloudSync, getSyncStatus, runCloudSync, SyncStatus } from '@/lib/syncEngine'
 import { SyncConflict } from '@/lib/types'
 
 interface Props {
@@ -18,6 +19,12 @@ function formatDate(value: number): string {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function getSyncErrorMessage(error: unknown): string {
+  if (!(error instanceof Error)) return 'Cloud sync failed'
+  if (error.message === GOOGLE_RECONNECT_MESSAGE) return 'Please reconnect Google Drive.'
+  return error.message
 }
 
 export default function CloudSyncScreen({ onBack }: Props) {
@@ -46,26 +53,37 @@ export default function CloudSyncScreen({ onBack }: Props) {
     setTimeout(() => setToast(null), 2500)
   }
 
-  const syncNow = async () => {
+  const syncNow = async (successMessage = 'Cloud sync complete') => {
     setLoading(true)
     try {
-      await runCloudSync()
+      await runCloudSync({ interactive: true })
       await load()
-      showToast('Cloud sync complete')
+      showToast(successMessage)
     } catch (error) {
       await load()
-      showToast(error instanceof Error ? error.message : 'Cloud sync failed')
+      showToast(getSyncErrorMessage(error))
     } finally {
       setLoading(false)
     }
   }
 
-  const toggleSync = async () => {
+  const connectSync = async () => {
+    await syncNow('Google Drive connected')
+  }
+
+  const disconnectSync = async () => {
     if (!status) return
-    const next = !status.enabled
-    await setSetting('syncEnabled', next)
-    await load()
-    if (next) await syncNow()
+    setLoading(true)
+    try {
+      await disconnectCloudSync()
+      await load()
+      showToast('Google Drive disconnected')
+    } catch (error) {
+      await load()
+      showToast(error instanceof Error ? error.message : 'Could not disconnect Google Drive')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const toggleAutoSync = async () => {
@@ -87,6 +105,7 @@ export default function CloudSyncScreen({ onBack }: Props) {
   }
 
   const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false
+  const needsReconnect = status?.lastSyncError === GOOGLE_RECONNECT_MESSAGE
 
   return (
     <div className="flex min-h-full flex-col">
@@ -115,48 +134,60 @@ export default function CloudSyncScreen({ onBack }: Props) {
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-indigo-500">Google Drive</p>
               <h2 className="mt-1 text-lg font-black text-slate-900">
-                {status?.enabled ? 'Sync is enabled' : 'Connect cloud sync'}
+                {needsReconnect ? 'Reconnect Google Drive' : status?.enabled ? 'Sync is enabled' : 'Connect cloud sync'}
               </h2>
               <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                Data stays in your Google Drive file. No hosted database is used.
+                {needsReconnect
+                  ? 'Auto-sync is paused until you reconnect your Google session.'
+                  : 'Data stays in your Google Drive file. No hosted database is used.'}
               </p>
             </div>
             <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${
-              status?.lastSyncStatus === 'success' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'
+              needsReconnect
+                ? 'bg-amber-50 text-amber-600'
+                : status?.lastSyncStatus === 'success'
+                  ? 'bg-emerald-50 text-emerald-600'
+                  : 'bg-indigo-50 text-indigo-600'
             }`}>
-              {status?.lastSyncStatus === 'success' ? <CheckCircle2 className="h-5 w-5" /> : <Cloud className="h-5 w-5" />}
+              {needsReconnect
+                ? <TriangleAlert className="h-5 w-5" />
+                : status?.lastSyncStatus === 'success'
+                  ? <CheckCircle2 className="h-5 w-5" />
+                  : <Cloud className="h-5 w-5" />}
             </span>
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2">
             <StatusPill label="Last sync" value={formatDate(status?.lastSyncAt ?? 0)} />
-            <StatusPill label="Status" value={status?.lastSyncStatus ?? 'idle'} />
+            <StatusPill label="Status" value={needsReconnect ? 'needs reconnect' : status?.lastSyncStatus ?? 'idle'} />
             <StatusPill label="Conflicts" value={String(status?.conflictCount ?? 0)} />
             <StatusPill label="File" value={status?.driveFileId ? 'Connected' : 'Not created'} />
           </div>
 
           {status?.lastSyncError && (
-            <div className="mt-3 rounded-2xl bg-rose-50 px-3 py-2">
-              <p className="text-xs font-semibold text-rose-600">{status.lastSyncError}</p>
+            <div className={`mt-3 rounded-2xl px-3 py-2 ${needsReconnect ? 'bg-amber-50' : 'bg-rose-50'}`}>
+              <p className={`text-xs font-semibold ${needsReconnect ? 'text-amber-700' : 'text-rose-600'}`}>
+                {status.lastSyncError}
+              </p>
             </div>
           )}
 
           <div className="mt-4 flex gap-2">
             <button
-              onClick={toggleSync}
+              onClick={status?.enabled ? disconnectSync : connectSync}
               disabled={loading}
               className={`flex-1 rounded-xl py-3 text-sm font-bold text-white disabled:opacity-50 ${
                 status?.enabled ? 'bg-slate-500' : 'bg-indigo-600'
               }`}
             >
-              {status?.enabled ? 'Disable' : 'Connect'}
+              {status?.enabled ? 'Disconnect' : 'Connect'}
             </button>
             <button
-              onClick={syncNow}
+              onClick={() => syncNow()}
               disabled={loading || isOffline}
               className="flex-1 rounded-xl bg-indigo-50 py-3 text-sm font-bold text-indigo-600 disabled:opacity-50"
             >
-              {loading || status?.inProgress ? 'Syncing...' : 'Sync now'}
+              {loading || status?.inProgress ? 'Syncing...' : needsReconnect ? 'Reconnect' : 'Sync now'}
             </button>
           </div>
         </div>

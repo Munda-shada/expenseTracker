@@ -3,12 +3,17 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import {
   Check,
+  CalendarClock,
   CircleDollarSign,
+  Flag,
   Mic,
   Plus,
+  PlusCircle,
   Search,
   Send,
+  ShieldCheck,
   Sparkles,
+  Target,
   TrendingDown,
   Wallet,
 } from 'lucide-react'
@@ -28,10 +33,12 @@ import {
   getSetting,
   getQuickQuestions,
   getDueRecurringRules,
+  getRecurringRules,
   advanceRecurringRule,
   updatePendingLogStatus,
+  setSetting,
 } from '@/lib/db'
-import { Entry, Category, EntrySource, RecurringRule, QuickQuestion } from '@/lib/types'
+import { Entry, Category, EntrySource, RecurringRule, QuickQuestion, FinancialGoal } from '@/lib/types'
 import {
   getTodayString,
   getYesterdayString,
@@ -56,6 +63,7 @@ import { buildSpendingInsights, getPreviousMonthRangeForInsights, SpendingInsigh
 import { canRetryPendingLog, getPendingLogStatus, getPendingLogStatusLabel } from '@/lib/offlineRetry'
 
 type Mode = 'log' | 'ask'
+type PlanningPanel = 'plan' | 'bills' | 'goals'
 
 interface ToastState {
   message: string
@@ -88,6 +96,58 @@ function MetricTile({
       <p className={`truncate text-lg font-black ${strong ? 'text-indigo-800' : 'text-slate-900'}`}>
         {value}
       </p>
+    </div>
+  )
+}
+
+function PlanStat({
+  label,
+  value,
+  tone = 'neutral',
+}: {
+  label: string
+  value: string
+  tone?: 'neutral' | 'good' | 'risk'
+}) {
+  return (
+    <div className={`rounded-2xl px-3 py-3 ${
+      tone === 'good'
+        ? 'bg-emerald-50 text-emerald-800'
+        : tone === 'risk'
+          ? 'bg-rose-50 text-rose-700'
+          : 'bg-slate-50 text-slate-800'
+    }`}>
+      <p className="text-[10px] font-black uppercase tracking-wide opacity-70">{label}</p>
+      <p className="mt-1 truncate text-base font-black">{value}</p>
+    </div>
+  )
+}
+
+function EmptyMini({ title, copy }: { title: string; copy: string }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-center">
+      <p className="text-sm font-black text-slate-700">{title}</p>
+      <p className="mt-1 text-xs font-medium leading-relaxed text-slate-500">{copy}</p>
+    </div>
+  )
+}
+
+function WidgetTile({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon
+  label: string
+  value: string
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-sm">
+      <div className="mb-2 flex items-center gap-2">
+        <Icon className="h-4 w-4 text-indigo-500" />
+        <p className="truncate text-[10px] font-black uppercase tracking-wide text-slate-400">{label}</p>
+      </div>
+      <p className="truncate text-sm font-black text-slate-900">{value}</p>
     </div>
   )
 }
@@ -174,25 +234,35 @@ interface Props {
   onViewAll: () => void
   onNavigateToHistory: (filters: object) => void
   focusLogInput?: boolean
+  focusAskInput?: boolean
   onLogInputFocused?: () => void
+  onAskInputFocused?: () => void
 }
 
 export default function HomeScreen({
   onViewAll,
   onNavigateToHistory,
   focusLogInput = false,
+  focusAskInput = false,
   onLogInputFocused,
+  onAskInputFocused,
 }: Props) {
   const [mode, setMode] = useState<Mode>('log')
+  const [activePlanningPanel, setActivePlanningPanel] = useState<PlanningPanel>('plan')
   const [input, setInput] = useState('')
   const [listening, setListening] = useState(false)
   const [loading, setLoading] = useState(false)
   const [todaySpend, setTodaySpend] = useState(0)
   const [monthSpend, setMonthSpend] = useState(0)
+  const [monthIncome, setMonthIncome] = useState(0)
   const [monthBudget, setMonthBudget] = useState<number | null>(null)
   const [recentEntries, setRecentEntries] = useState<Entry[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [localInsights, setLocalInsights] = useState<SpendingInsight[]>([])
+  const [recurringRules, setRecurringRules] = useState<RecurringRule[]>([])
+  const [monthlyIncomePlan, setMonthlyIncomePlan] = useState(0)
+  const [monthlySavingsTarget, setMonthlySavingsTarget] = useState(0)
+  const [financialGoals, setFinancialGoals] = useState<FinancialGoal[]>([])
   const [pendingParsed, setPendingParsed] = useState<ParsedEntry | null>(null)
   const [pendingParsedSource, setPendingParsedSource] = useState<EntrySource>('ai')
   const [pendingBulk, setPendingBulk] = useState<ParsedEntry[] | null>(null)
@@ -240,6 +310,10 @@ export default function HomeScreen({
       multiCategoryMode,
       pending,
       questions,
+      rules,
+      plannedIncome,
+      savingsTarget,
+      goals,
     ] = await Promise.all([
       getEntriesByDate(today),
       getEntriesInRange(monthStart, today),
@@ -251,6 +325,10 @@ export default function HomeScreen({
       getSetting('multiCategoryMode'),
       getPendingEntries(),
       getQuickQuestions({ enabledOnly: true }),
+      getRecurringRules(),
+      getSetting('monthlyIncomeEstimate'),
+      getSetting('monthlySavingsTarget'),
+      getSetting('financialGoals'),
     ])
     const todayTotal = todayEntries
       .filter((e) => e.type === 'expense')
@@ -258,13 +336,21 @@ export default function HomeScreen({
     const monthTotal = monthEntries
       .filter((e) => e.type === 'expense')
       .reduce((sum, e) => sum + e.amount, 0)
+    const monthIncomeTotal = monthEntries
+      .filter((e) => e.type === 'income')
+      .reduce((sum, e) => sum + e.amount, 0)
     setTodaySpend(todayTotal)
     setMonthSpend(monthTotal)
+    setMonthIncome(monthIncomeTotal)
     setMonthBudget(budget?.monthlyLimit ?? null)
     setRecentEntries(recent)
     setCategories(cats)
     setPendingLogs(pending)
     setQuickQuestions(questions)
+    setRecurringRules(rules)
+    setMonthlyIncomePlan(plannedIncome ?? 0)
+    setMonthlySavingsTarget(savingsTarget ?? 0)
+    setFinancialGoals(goals ?? [])
     setLocalInsights(buildSpendingInsights({
       entries: monthEntries,
       previousEntries: previousMonthEntries,
@@ -292,6 +378,15 @@ export default function HomeScreen({
       onLogInputFocused?.()
     }, 0)
   }, [focusLogInput, onLogInputFocused])
+
+  useEffect(() => {
+    if (!focusAskInput) return
+    window.setTimeout(() => {
+      setMode('ask')
+      inputRef.current?.focus()
+      onAskInputFocused?.()
+    }, 0)
+  }, [focusAskInput, onAskInputFocused])
 
   const showToast = useCallback((message: string, undo?: () => void) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
@@ -654,12 +749,80 @@ export default function HomeScreen({
     setPendingRawInput(`repeat: ${entry.note || entry.rawInput}`)
   }
 
+  const handlePayRecurringRule = (rule: RecurringRule) => {
+    setPendingRecurringRule(rule)
+    setPendingParsedSource('manual')
+    setPendingRawInput(`upcoming: ${rule.entryTemplate.note || 'scheduled entry'}`)
+    setPendingParsed({
+      ...rule.entryTemplate,
+      date: getTodayString(),
+      confidence: 'high',
+    })
+  }
+
+  const handleAddGoal = async () => {
+    const name = window.prompt('Goal name, e.g. Emergency fund')
+    if (!name?.trim()) return
+    const target = Number(window.prompt('Target amount') ?? 0)
+    if (!Number.isFinite(target) || target <= 0) {
+      showToast('Goal target should be more than 0')
+      return
+    }
+    const monthlyTarget = Number(window.prompt('Monthly target amount') ?? 0)
+    const now = Date.now()
+    const nextGoals: FinancialGoal[] = [
+      ...financialGoals,
+      {
+        id: `goal-${now}`,
+        name: name.trim(),
+        targetAmount: target,
+        savedAmount: 0,
+        monthlyTarget: Number.isFinite(monthlyTarget) ? Math.max(monthlyTarget, 0) : 0,
+        emoji: '🎯',
+        createdAt: now,
+        updatedAt: now,
+      },
+    ]
+    await setSetting('financialGoals', nextGoals)
+    setFinancialGoals(nextGoals)
+    showToast('Goal added')
+  }
+
+  const handleAddGoalSavings = async (goal: FinancialGoal) => {
+    const amount = Number(window.prompt(`Add saved amount for ${goal.name}`) ?? 0)
+    if (!Number.isFinite(amount) || amount <= 0) return
+    const nextGoals = financialGoals.map((item) =>
+      item.id === goal.id
+        ? { ...item, savedAmount: Math.min(item.targetAmount, item.savedAmount + amount), updatedAt: Date.now() }
+        : item
+    )
+    await setSetting('financialGoals', nextGoals)
+    setFinancialGoals(nextGoals)
+    showToast('Goal progress updated')
+  }
+
   const budgetPercent = monthBudget
     ? Math.min((monthSpend / monthBudget) * 100, 100)
     : null
   const daysElapsed = new Date().getDate()
+  const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()
   const dailyAverage = monthSpend > 0 ? monthSpend / daysElapsed : 0
+  const projectedSpend = dailyAverage * daysInMonth
   const budgetLeft = monthBudget !== null ? Math.max(monthBudget - monthSpend, 0) : null
+  const planIncome = monthlyIncomePlan || monthIncome
+  const fixedMonthly = recurringRules
+    .filter((rule) => rule.enabled && rule.entryTemplate.type === 'expense')
+    .reduce((sum, rule) => sum + rule.entryTemplate.amount, 0)
+  const projectedSavings = planIncome > 0 ? planIncome - projectedSpend : monthIncome - monthSpend
+  const safeToSpend = monthBudget !== null
+    ? Math.max(0, (monthBudget - monthSpend) / Math.max(daysInMonth - daysElapsed + 1, 1))
+    : Math.max(0, (planIncome - monthSpend - monthlySavingsTarget) / Math.max(daysInMonth - daysElapsed + 1, 1))
+  const upcomingRules = recurringRules
+    .filter((rule) => rule.enabled)
+    .slice(0, 4)
+  const highestTodayEntry = recentEntries
+    .filter((entry) => entry.type === 'expense' && entry.date === getTodayString())
+    .sort((a, b) => b.amount - a.amount)[0]
   const fallbackInsight = monthBudget
     ? monthSpend >= monthBudget
       ? {
@@ -716,12 +879,12 @@ export default function HomeScreen({
 
       {/* ── Header ── */}
       <div className="border-b border-slate-200 bg-white/90 px-4 pb-4 pt-5 backdrop-blur">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-500">Expense dashboard</p>
             <h1 className="mt-1 text-2xl font-bold text-slate-950">Today</h1>
           </div>
-          <p className="rounded-2xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-500">
+          <p className="shrink-0 rounded-2xl bg-slate-100 px-3 py-2 text-right text-xs font-semibold text-slate-500">
             {formatDisplayDate(getTodayString())}
           </p>
         </div>
@@ -781,6 +944,11 @@ export default function HomeScreen({
         </div>
       </div>
 
+      <div className="grid grid-cols-2 gap-2 px-4 pt-3">
+        <WidgetTile icon={Target} label="Budget risk" value={budgetPercent === null ? 'Set budget' : `${budgetPercent.toFixed(0)}% used`} />
+        <WidgetTile icon={Flag} label="Largest today" value={highestTodayEntry ? formatCurrency(highestTodayEntry.amount) : 'No spend'} />
+      </div>
+
       {/* ── Quick Actions ── */}
       <QuickAddTileRow
         categories={categories}
@@ -814,17 +982,17 @@ export default function HomeScreen({
         </div>
 
         {/* Input row */}
-        <div className="flex items-center gap-2">
+        <div className="mobile-safe-row grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
           <button
             onClick={() => setManualEntryRawInput('')}
             aria-label="Add manual entry"
-            className="rounded-2xl bg-slate-100 p-2.5 text-slate-500 transition-transform active:scale-95"
+            className="shrink-0 rounded-2xl bg-slate-100 p-2.5 text-slate-500 transition-transform active:scale-95"
           >
             <Plus className="h-5 w-5" />
           </button>
 
-          <div className="flex flex-1 items-center gap-2 rounded-2xl bg-slate-100 px-3 py-2.5">
-            {mode === 'ask' ? <Search className="h-4 w-4 text-slate-400" /> : <Check className="h-4 w-4 text-slate-400" />}
+          <div className="flex min-w-0 items-center gap-2 rounded-2xl bg-slate-100 px-3 py-2.5">
+            {mode === 'ask' ? <Search className="h-4 w-4 shrink-0 text-slate-400" /> : <Check className="h-4 w-4 shrink-0 text-slate-400" />}
             <input
               ref={inputRef}
               type="text"
@@ -833,15 +1001,15 @@ export default function HomeScreen({
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               placeholder={
                 mode === 'log'
-                  ? 'e.g. 100 auto to badminton...'
-                  : 'Ask anything about your spending...'
+                  ? 'e.g. 100 auto...'
+                  : 'Ask spending...'
               }
               className="min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
             />
             <button
               onClick={toggleMic}
               aria-label="Voice input"
-              className={`p-1 rounded-lg transition-colors ${
+              className={`shrink-0 rounded-lg p-1 transition-colors ${
                 listening
                   ? 'text-red-500 animate-pulse'
                   : 'text-slate-400 active:text-indigo-500'
@@ -855,7 +1023,7 @@ export default function HomeScreen({
             onClick={handleSend}
             disabled={!input.trim() || loading}
             aria-label="Send"
-            className="rounded-2xl bg-indigo-600 p-2.5 text-white transition-transform active:scale-95 disabled:opacity-40"
+            className="shrink-0 rounded-2xl bg-indigo-600 p-2.5 text-white transition-transform active:scale-95 disabled:opacity-40"
           >
             {loading ? (
               <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -876,6 +1044,139 @@ export default function HomeScreen({
         )}
       </div>
 
+      <section className="px-4 pt-3">
+        <div className="dashboard-panel p-3">
+          <div className="mb-3 grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1" role="tablist" aria-label="Planning panels">
+            {([
+              ['plan', 'Plan'],
+              ['bills', 'Bills'],
+              ['goals', 'Goals'],
+            ] as const).map(([panel, label]) => (
+              <button
+                key={panel}
+                type="button"
+                role="tab"
+                aria-selected={activePlanningPanel === panel}
+                onClick={() => setActivePlanningPanel(panel)}
+                className={`rounded-xl py-1.5 text-xs font-black transition-colors ${
+                  activePlanningPanel === panel
+                    ? 'bg-white text-indigo-700 shadow-sm'
+                    : 'text-slate-500'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {activePlanningPanel === 'plan' && (
+            <div>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-black text-slate-900">Monthly plan</p>
+                  <p className="mt-0.5 truncate text-xs font-medium text-slate-500">
+                    Safe-to-spend and projected savings.
+                  </p>
+                </div>
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                  <ShieldCheck className="h-4 w-4" />
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <PlanStat label="Safe today" value={formatCurrency(safeToSpend)} tone="good" />
+                <PlanStat label="Projected save" value={formatCurrency(projectedSavings)} tone={projectedSavings >= 0 ? 'good' : 'risk'} />
+                <PlanStat label="Income" value={planIncome ? formatCurrency(planIncome) : 'Not set'} />
+                <PlanStat label="Fixed costs" value={formatCurrency(fixedMonthly)} />
+              </div>
+            </div>
+          )}
+
+          {activePlanningPanel === 'bills' && (
+            <div>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-black text-slate-900">Upcoming bills</p>
+                  <p className="mt-0.5 truncate text-xs font-medium text-slate-500">Recurring bills that need attention.</p>
+                </div>
+                <CalendarClock className="h-5 w-5 shrink-0 text-indigo-500" />
+              </div>
+              {upcomingRules.length === 0 ? (
+                <EmptyMini title="No upcoming bills" copy="Create recurring bills from any saved entry." />
+              ) : (
+                <div className="space-y-2">
+                  {upcomingRules.slice(0, 3).map((rule) => {
+                    const overdue = rule.nextDueDate < getTodayString()
+                    return (
+                      <div key={rule.id} className="flex items-center gap-3 rounded-2xl bg-slate-50 px-3 py-2.5">
+                        <span className={`h-2.5 w-2.5 rounded-full ${overdue ? 'bg-rose-500' : 'bg-indigo-500'}`} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-bold text-slate-800">
+                            {rule.entryTemplate.note || getCategoryNames(rule.entryTemplate.categoryIds)}
+                          </p>
+                          <p className="truncate text-xs font-medium text-slate-500">
+                            {overdue ? 'Missed' : 'Due'} {formatDisplayDate(rule.nextDueDate)} · {formatCurrency(rule.entryTemplate.amount)}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handlePayRecurringRule(rule)}
+                          className="shrink-0 rounded-xl bg-white px-3 py-2 text-xs font-black text-indigo-600 shadow-sm"
+                        >
+                          Pay
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activePlanningPanel === 'goals' && (
+            <div>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-black text-slate-900">Goals</p>
+                  <p className="mt-0.5 truncate text-xs font-medium text-slate-500">Savings targets without cluttering Log.</p>
+                </div>
+                <button
+                  onClick={handleAddGoal}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600"
+                  aria-label="Add savings goal"
+                >
+                  <PlusCircle className="h-4 w-4" />
+                </button>
+              </div>
+              {financialGoals.length === 0 ? (
+                <EmptyMini title="No goals yet" copy="Add emergency fund, trip, or debt payoff goals." />
+              ) : (
+                <div className="space-y-2">
+                  {financialGoals.slice(0, 2).map((goal) => {
+                    const pct = goal.targetAmount > 0 ? Math.min((goal.savedAmount / goal.targetAmount) * 100, 100) : 0
+                    return (
+                      <button
+                        key={goal.id}
+                        onClick={() => handleAddGoalSavings(goal)}
+                        className="w-full rounded-2xl bg-white px-3 py-3 text-left shadow-sm"
+                      >
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                          <p className="truncate text-sm font-black text-slate-900">
+                            <span className="mr-1">{goal.emoji}</span>{goal.name}
+                          </p>
+                          <p className="shrink-0 text-xs font-bold text-slate-500">{pct.toFixed(0)}%</p>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                          <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* ── Ask Mode chat area ── */}
       {mode === 'ask' && (
         <div className="flex-1">
@@ -893,15 +1194,15 @@ export default function HomeScreen({
         <div className="flex-1 px-4 pt-4">
           {pendingLogs.length > 0 && (
             <div className="mb-5">
-              <div className="flex items-center justify-between mb-2">
-                <div>
+              <div className="mb-2 flex items-start justify-between gap-2">
+                <div className="min-w-0">
                   <p className="text-sm font-semibold text-gray-700">Offline queue</p>
                   <p className="text-xs text-slate-400">Retries automatically when you are online.</p>
                 </div>
                 <button
                   onClick={retryAllPendingLogs}
                   disabled={loading || !pendingLogs.some(canRetryPendingLog)}
-                  className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-600 disabled:opacity-40"
+                  className="shrink-0 whitespace-nowrap rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-600 disabled:opacity-40"
                 >
                   Retry all ({pendingLogs.length})
                 </button>
@@ -969,13 +1270,13 @@ export default function HomeScreen({
                 <button
                   key={entry.id}
                   onClick={() => setSelectedEntry(entry)}
-                  className="w-full flex items-center justify-between bg-white rounded-xl px-4 py-3 shadow-sm active:scale-[0.98] transition-transform text-left"
+                  className="mobile-safe-row flex w-full items-center justify-between rounded-xl bg-white px-4 py-3 text-left shadow-sm transition-transform active:scale-[0.98]"
                 >
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-800 truncate">
                       {entry.note || getCategoryNames(entry.categoryIds)}
                     </p>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="mt-0.5 truncate text-xs text-gray-400">
                       {getCategoryNames(entry.categoryIds)} · {timeAgo(entry.createdAt)}
                     </p>
                     {entry.tags.length > 0 && (
@@ -991,8 +1292,8 @@ export default function HomeScreen({
                       </div>
                     )}
                   </div>
-                  <div className="text-right ml-3">
-                    <p className={`text-sm font-semibold ${
+                  <div className="ml-3 max-w-[42%] shrink-0 text-right">
+                    <p className={`truncate text-sm font-semibold ${
                       entry.type === 'income' ? 'text-green-600' : 'text-gray-800'
                     }`}>
                       {entry.type === 'income' ? '+' : '-'}{formatCurrency(entry.amount)}

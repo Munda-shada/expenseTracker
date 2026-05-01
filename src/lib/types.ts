@@ -53,6 +53,18 @@ export interface Budget {
   updatedAt: number
 }
 
+// ─── Goals / planning ──────────────────────────────────────
+export interface FinancialGoal {
+  id: string
+  name: string
+  targetAmount: number
+  savedAmount: number
+  monthlyTarget: number
+  emoji: string
+  createdAt: number
+  updatedAt: number
+}
+
 // ─── Reconciliation ─────────────────────────────────────────
 export interface ReconciliationCheck {
   id: string
@@ -211,6 +223,10 @@ export interface Settings {
   lastRecurringNotificationDate: string
   lastInsightRefreshAt: number
   reportDefaultPeriod: 'this_month' | 'last_month'
+  preferredCurrency: 'INR' | 'USD' | 'EUR' | 'GBP'
+  monthlyIncomeEstimate: number
+  monthlySavingsTarget: number
+  financialGoals: FinancialGoal[]
   syncEnabled: boolean
   syncProvider: 'googleDrive'
   syncDriveFileId: string | null

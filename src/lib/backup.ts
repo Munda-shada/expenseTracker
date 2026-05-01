@@ -16,6 +16,8 @@ import {
 
 const BACKUP_FORMAT_VERSION = 1
 const APP_VERSION = '2.0'
+export const DRIVE_SYNC_IMPORT_MESSAGE =
+  'This is a Google Drive Cloud Sync file, not a JSON backup. To restore it, go to Settings > Cloud sync, connect the same Google account, and tap Sync now.'
 type ExportPeriod = 'all' | 'this_month' | 'last_month'
 
 type SettingRecord = { key: keyof Settings; value: Settings[keyof Settings] }
@@ -372,6 +374,9 @@ export function parseBackupJson(text: string): BackupFile {
 
   if (!isObject(parsed) || !isObject(parsed.metadata) || !isObject(parsed.data)) {
     throw new Error('Backup file has an invalid shape.')
+  }
+  if (parsed.metadata.syncSchemaVersion !== undefined) {
+    throw new Error(DRIVE_SYNC_IMPORT_MESSAGE)
   }
   if (parsed.metadata.databaseName !== 'expenseTrackerDB') {
     throw new Error('This backup does not belong to Expense Tracker.')

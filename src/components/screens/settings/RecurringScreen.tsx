@@ -58,8 +58,8 @@ export default function RecurringScreen({ onBack }: Props) {
             <ChevronLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Recurring Expenses</h1>
-            <p className="text-xs text-slate-500">Due items appear on Home for confirmation.</p>
+            <h1 className="text-xl font-bold text-slate-900">Recurring Bills</h1>
+            <p className="text-xs text-slate-500">Rent, subscriptions, EMIs, salary, and repeat bills.</p>
           </div>
         </div>
       </div>
@@ -70,7 +70,7 @@ export default function RecurringScreen({ onBack }: Props) {
             <CalendarClock className="mx-auto h-9 w-9 text-indigo-500" />
             <p className="mt-3 text-sm font-semibold text-slate-800">No recurring rules yet</p>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Open any entry detail and choose Recurring to schedule rent, subscriptions, salary, or repeat bills.
+              Open any entry detail and choose Recurring to schedule rent, subscriptions, EMIs, salary, or repeat bills.
             </p>
           </div>
         ) : (

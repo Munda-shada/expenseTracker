@@ -68,11 +68,11 @@ export default function LentScreen() {
 
       {/* Header */}
       <div className="px-4 pt-5 pb-3 bg-white border-b border-gray-100">
-        <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl font-bold text-gray-800">Lent and borrowed</h1>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h1 className="min-w-0 text-xl font-bold text-gray-800">Lent and borrowed</h1>
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1 bg-indigo-500 text-white text-sm font-semibold px-3 py-1.5 rounded-xl"
+            className="flex shrink-0 items-center gap-1 rounded-xl bg-indigo-500 px-3 py-1.5 text-sm font-semibold text-white"
           >
             + Add
           </button>
@@ -82,13 +82,13 @@ export default function LentScreen() {
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="bg-green-50 rounded-xl px-3 py-2">
             <p className="text-xs text-green-400 font-medium">Owed to me</p>
-            <p className="text-lg font-bold text-green-600">
+            <p className="truncate text-lg font-bold text-green-600">
               {formatCurrency(totalLent)}
             </p>
           </div>
           <div className="bg-red-50 rounded-xl px-3 py-2">
             <p className="text-xs text-red-400 font-medium">I owe</p>
-            <p className="text-lg font-bold text-red-500">
+            <p className="truncate text-lg font-bold text-red-500">
               {formatCurrency(totalBorrowed)}
             </p>
           </div>
@@ -220,8 +220,8 @@ function RecordCard({
   const [showActions, setShowActions] = useState(false)
 
   return (
-    <div className={`bg-white rounded-2xl shadow-sm px-4 py-3 ${settled ? 'opacity-60' : ''}`}>
-      <div className="flex items-start justify-between">
+    <div className={`rounded-2xl bg-white px-4 py-3 shadow-sm ${settled ? 'opacity-60' : ''}`}>
+      <div className="mobile-safe-row flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
@@ -231,14 +231,14 @@ function RecordCard({
             }`}>
               {record.direction === 'lent' ? 'Lent' : 'Borrowed'}
             </span>
-            <p className="text-sm font-semibold text-gray-800 truncate">
+            <p className="min-w-0 truncate text-sm font-semibold text-gray-800">
               {record.counterparty}
             </p>
           </div>
           {record.note && (
-            <p className="text-xs text-gray-400 mt-1">{record.note}</p>
+            <p className="mt-1 truncate text-xs text-gray-400">{record.note}</p>
           )}
-          <p className="text-xs text-gray-300 mt-1">
+          <p className="mt-1 truncate text-xs text-gray-300">
             {formatDisplayDate(record.date)}
             {settled && record.settledDate && (
               <span className="ml-2 text-green-400">
@@ -248,8 +248,8 @@ function RecordCard({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 ml-3">
-          <p className={`text-base font-bold ${
+        <div className="flex max-w-[42%] shrink-0 items-center gap-2">
+          <p className={`truncate text-base font-bold ${
             record.direction === 'lent' ? 'text-green-600' : 'text-red-500'
           }`}>
             {formatCurrency(record.amount)}
@@ -269,11 +269,11 @@ function RecordCard({
 
       {/* Actions */}
       {showActions && (
-        <div className="flex gap-2 mt-3 pt-3 border-t border-gray-50">
+        <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-50 pt-3">
           {!settled && onSettle && (
             <button
               onClick={() => { onSettle(); setShowActions(false) }}
-              className="flex-1 py-2 rounded-xl bg-green-50 text-green-600 text-xs font-semibold"
+              className="min-w-[7rem] flex-1 rounded-xl bg-green-50 py-2 text-xs font-semibold text-green-600"
             >
               ✅ Mark Settled
             </button>
@@ -281,14 +281,14 @@ function RecordCard({
           {!settled && onEdit && (
             <button
               onClick={() => { onEdit(); setShowActions(false) }}
-              className="flex-1 py-2 rounded-xl bg-gray-100 text-gray-600 text-xs font-semibold"
+              className="min-w-[5rem] flex-1 rounded-xl bg-gray-100 py-2 text-xs font-semibold text-gray-600"
             >
               ✏️ Edit
             </button>
           )}
           <button
             onClick={() => { onDelete(); setShowActions(false) }}
-            className="flex-1 py-2 rounded-xl bg-red-50 text-red-500 text-xs font-semibold"
+            className="min-w-[5rem] flex-1 rounded-xl bg-red-50 py-2 text-xs font-semibold text-red-500"
           >
             🗑 Delete
           </button>
@@ -379,12 +379,12 @@ function LentBorrowedModal({
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
               Type
             </p>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {(['lent', 'borrowed'] as LentBorrowedDirection[]).map((d) => (
                 <button
                   key={d}
                   onClick={() => setDirection(d)}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors capitalize ${
+                  className={`min-w-[8rem] flex-1 rounded-xl py-2.5 text-sm font-semibold capitalize transition-colors ${
                     direction === d
                       ? d === 'lent'
                         ? 'bg-green-50 text-green-600 border border-green-200'
@@ -418,14 +418,14 @@ function LentBorrowedModal({
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
               Amount
             </p>
-            <div className="flex items-center bg-gray-100 rounded-xl px-3 py-2.5 gap-1">
+            <div className="flex items-center gap-1 rounded-xl bg-gray-100 px-3 py-2.5">
               <span className="text-gray-400 text-sm">₹</span>
               <input
                 type="number"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0"
-                className="flex-1 bg-transparent text-sm text-gray-800 outline-none"
+                className="min-w-0 flex-1 bg-transparent text-sm text-gray-800 outline-none"
                 inputMode="numeric"
               />
             </div>
@@ -461,7 +461,7 @@ function LentBorrowedModal({
           </div>
         </div>
 
-        <div className="px-4 pb-6 flex gap-3">
+        <div className="flex gap-3 px-4 pb-6">
           <button
             onClick={requestClose}
             className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-500"
