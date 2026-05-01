@@ -1,17 +1,19 @@
 'use client'
 
 import { useState } from 'react'
-import { Category, Entry, EntrySource, EntryType, ConfidenceLevel } from '@/lib/types'
+import { Category, DEFAULT_PAYMENT_METHOD, Entry, EntrySource, EntryType, ConfidenceLevel, PaymentMethod } from '@/lib/types'
 import { addEntry, addCorrection } from '@/lib/db'
 import { v4 as uuidv4 } from 'uuid'
 import TagInput from '@/components/TagInput'
 import { useModalDismiss } from '@/lib/useModalDismiss'
 import ModalShell from '@/components/ModalShell'
+import PaymentMethodInput from '@/components/PaymentMethodInput'
 
 interface ParsedEntry {
   type: EntryType
   amount: number
   categoryIds: string[]
+  paymentMethod?: PaymentMethod | null
   date: string
   note: string
   tags: string[]
@@ -38,6 +40,7 @@ export default function ConfirmEntryModal({
   const [type, setType] = useState<EntryType>(parsed.type)
   const [amount, setAmount] = useState(String(parsed.amount))
   const [categoryIds, setCategoryIds] = useState<string[]>(parsed.categoryIds)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(parsed.paymentMethod ?? DEFAULT_PAYMENT_METHOD)
   const [date, setDate] = useState(parsed.date)
   const [note, setNote] = useState(parsed.note)
   const [tags, setTags] = useState<string[]>(parsed.tags)
@@ -49,6 +52,7 @@ export default function ConfirmEntryModal({
     type !== parsed.type ||
     amount !== String(parsed.amount) ||
     JSON.stringify(categoryIds) !== JSON.stringify(parsed.categoryIds) ||
+    paymentMethod !== (parsed.paymentMethod ?? DEFAULT_PAYMENT_METHOD) ||
     date !== parsed.date ||
     note !== parsed.note ||
     JSON.stringify(tags) !== JSON.stringify(parsed.tags)
@@ -70,6 +74,7 @@ export default function ConfirmEntryModal({
       type,
       amount: Number(amount),
       categoryIds,
+      paymentMethod,
       tags,
       date,
       note,
@@ -88,6 +93,7 @@ export default function ConfirmEntryModal({
     if (Number(amount) !== parsed.amount) correctedFields.push('amount')
     if (JSON.stringify([...categoryIds].sort()) !== JSON.stringify([...parsed.categoryIds].sort()))
       correctedFields.push('categoryIds')
+    if (paymentMethod !== (parsed.paymentMethod ?? DEFAULT_PAYMENT_METHOD)) correctedFields.push('paymentMethod')
     if (date !== parsed.date) correctedFields.push('date')
     if (note !== parsed.note) correctedFields.push('note')
 
@@ -96,7 +102,7 @@ export default function ConfirmEntryModal({
         id: uuidv4(),
         rawInput,
         aiOutput: parsed,
-        userCorrected: { type, amount: Number(amount), categoryIds, date, note },
+        userCorrected: { type, amount: Number(amount), categoryIds, paymentMethod, date, note },
         correctedFields,
         createdAt: now,
       })
@@ -228,6 +234,8 @@ export default function ConfirmEntryModal({
               suggestedTags={parsed.tags}
             />
           </div>
+
+          <PaymentMethodInput value={paymentMethod} onChange={setPaymentMethod} />
 
           {/* Note */}
           <div>

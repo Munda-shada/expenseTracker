@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { CalendarDays, Filter, Layers3, Search, X } from 'lucide-react'
 import { getAllEntries, getCategories } from '@/lib/db'
-import { Entry, Category, EntrySource } from '@/lib/types'
+import { Entry, Category, EntrySource, PAYMENT_METHOD_OPTIONS, PaymentMethod, getPaymentMethodLabel } from '@/lib/types'
 import { formatCurrency, formatDisplayDate, getTodayString, timeAgo } from '@/lib/utils'
 import EntryDetailModal from '@/components/EntryDetailModal'
 import EditEntryModal from '@/components/EditEntryModal'
@@ -14,10 +14,12 @@ import ModalShell from '@/components/ModalShell'
 
 type FilterType = 'all' | 'expense' | 'income'
 type SourceFilter = 'all' | EntrySource
+type PaymentMethodFilter = 'all' | 'unspecified' | PaymentMethod
 
 interface Filters {
   type: FilterType
   source: SourceFilter
+  paymentMethod: PaymentMethodFilter
   categoryIds: string[]
   tags: string[]
   dateFrom: string
@@ -34,6 +36,7 @@ interface Props {
 const DEFAULT_FILTERS: Filters = {
   type: 'all',
   source: 'all',
+  paymentMethod: 'all',
   categoryIds: [],
   tags: [],
   dateFrom: '',
@@ -45,11 +48,13 @@ const DEFAULT_FILTERS: Filters = {
 }
 
 function normalizeFilters(filters?: Partial<Filters> | null): Filters {
+  const paymentMethods = (filters as Partial<Filters> & { paymentMethods?: PaymentMethod[] | null } | null)?.paymentMethods
   return {
     ...DEFAULT_FILTERS,
     ...filters,
     type: filters?.type ?? DEFAULT_FILTERS.type,
     source: filters?.source ?? DEFAULT_FILTERS.source,
+    paymentMethod: filters?.paymentMethod ?? paymentMethods?.[0] ?? DEFAULT_FILTERS.paymentMethod,
     categoryIds: filters?.categoryIds ?? DEFAULT_FILTERS.categoryIds,
     tags: filters?.tags ?? DEFAULT_FILTERS.tags,
     dateFrom: filters?.dateFrom ?? DEFAULT_FILTERS.dateFrom,
@@ -99,6 +104,8 @@ export default function HistoryScreen({ preFilters }: Props) {
   const filtered = entries.filter((e) => {
     if (filters.type !== 'all' && e.type !== filters.type) return false
     if (filters.source !== 'all' && e.source !== filters.source) return false
+    if (filters.paymentMethod === 'unspecified' && e.paymentMethod) return false
+    if (filters.paymentMethod !== 'all' && filters.paymentMethod !== 'unspecified' && e.paymentMethod !== filters.paymentMethod) return false
     if (filters.bulkBatchId && e.bulkBatchId !== filters.bulkBatchId) return false
     if ((filters.categoryIds ?? []).length > 0 &&
       !filters.categoryIds.some((id) => e.categoryIds.includes(id))) return false
@@ -112,10 +119,11 @@ export default function HistoryScreen({ preFilters }: Props) {
       const q = filters.search.toLowerCase()
       const matchNote = e.note.toLowerCase().includes(q)
       const matchRaw = e.rawInput.toLowerCase().includes(q)
+      const matchPayment = getPaymentMethodLabel(e.paymentMethod).toLowerCase().includes(q)
       const matchCat = e.categoryIds.some((id) =>
         categories.find((c) => c.id === id)?.name.toLowerCase().includes(q)
       )
-      if (!matchNote && !matchRaw && !matchCat) return false
+      if (!matchNote && !matchRaw && !matchPayment && !matchCat) return false
     }
     return true
   })
@@ -151,6 +159,7 @@ export default function HistoryScreen({ preFilters }: Props) {
   const activeFilterCount = [
     filters.type !== 'all',
     filters.source !== 'all',
+    filters.paymentMethod !== 'all',
     (filters.categoryIds ?? []).length > 0,
     (filters.tags ?? []).length > 0,
     filters.dateFrom !== '',
@@ -222,6 +231,13 @@ export default function HistoryScreen({ preFilters }: Props) {
             {filters.source !== 'all' && (
               <span className="max-w-full truncate rounded-full bg-indigo-50 px-2 py-1 text-xs capitalize text-indigo-500">
                 {filters.source}
+              </span>
+            )}
+            {filters.paymentMethod !== 'all' && (
+              <span className="max-w-full truncate rounded-full bg-indigo-50 px-2 py-1 text-xs text-indigo-500">
+                {filters.paymentMethod === 'unspecified'
+                  ? 'Unspecified'
+                  : getPaymentMethodLabel(filters.paymentMethod)}
               </span>
             )}
             {(filters.tags ?? []).map((tag) => (
@@ -370,7 +386,7 @@ export default function HistoryScreen({ preFilters }: Props) {
                               {entry.note || getCategoryNames(entry.categoryIds)}
                             </p>
                             <p className="mt-0.5 truncate text-xs text-gray-400">
-                              {getCategoryNames(entry.categoryIds)}
+                              {getCategoryNames(entry.categoryIds)} · {getPaymentMethodLabel(entry.paymentMethod)}
                             </p>
                             {entry.tags.length > 0 && (
                               <div className="flex gap-1 mt-1 flex-wrap">
@@ -461,6 +477,7 @@ export default function HistoryScreen({ preFilters }: Props) {
             type: repeatEntry.type,
             amount: repeatEntry.amount,
             categoryIds: repeatEntry.categoryIds,
+            paymentMethod: repeatEntry.paymentMethod ?? null,
             date: getTodayString(),
             note: repeatEntry.note,
             tags: repeatEntry.tags,
@@ -584,6 +601,32 @@ function FilterModal({
                   }`}
                 >
                   {source === 'quickAdd' ? 'Action' : source}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Payment method */}
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              Payment Method
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { value: 'all', label: 'All' },
+                ...PAYMENT_METHOD_OPTIONS,
+                { value: 'unspecified', label: 'Unspecified' },
+              ] as Array<{ value: PaymentMethodFilter; label: string }>).map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => setLocal((f) => ({ ...f, paymentMethod: option.value }))}
+                  className={`rounded-xl px-2.5 py-2 text-xs font-semibold transition-colors ${
+                    local.paymentMethod === option.value
+                      ? 'bg-indigo-500 text-white'
+                      : 'bg-gray-100 text-gray-500'
+                  }`}
+                >
+                  {option.label}
                 </button>
               ))}
             </div>

@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { Category, Entry, EntryType } from '@/lib/types'
+import { Category, Entry, EntryType, PaymentMethod } from '@/lib/types'
 import TagInput from '@/components/TagInput'
 import { updateEntry } from '@/lib/db'
 import { useModalDismiss } from '@/lib/useModalDismiss'
 import ModalShell from '@/components/ModalShell'
+import PaymentMethodInput from '@/components/PaymentMethodInput'
 
 
 interface Props {
@@ -19,6 +20,7 @@ export default function EditEntryModal({ entry, categories, onSave, onCancel }: 
   const [type, setType] = useState<EntryType>(entry.type)
   const [amount, setAmount] = useState(String(entry.amount))
   const [categoryIds, setCategoryIds] = useState<string[]>(entry.categoryIds)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(entry.paymentMethod ?? null)
   const [date, setDate] = useState(entry.date)
   const [note, setNote] = useState(entry.note)
   const [tags, setTags] = useState<string[]>(entry.tags)
@@ -29,6 +31,7 @@ export default function EditEntryModal({ entry, categories, onSave, onCancel }: 
     type !== entry.type ||
     amount !== String(entry.amount) ||
     JSON.stringify(categoryIds) !== JSON.stringify(entry.categoryIds) ||
+    paymentMethod !== (entry.paymentMethod ?? null) ||
     date !== entry.date ||
     note !== entry.note ||
     JSON.stringify(tags) !== JSON.stringify(entry.tags)
@@ -49,6 +52,7 @@ export default function EditEntryModal({ entry, categories, onSave, onCancel }: 
       type,
       amount: Number(amount),
       categoryIds,
+      paymentMethod,
       date,
       note,
       tags,
@@ -162,6 +166,8 @@ export default function EditEntryModal({ entry, categories, onSave, onCancel }: 
               onChange={setTags}
             />
           </div>
+
+          <PaymentMethodInput value={paymentMethod} onChange={setPaymentMethod} />
 
           {/* Note */}
           <div>

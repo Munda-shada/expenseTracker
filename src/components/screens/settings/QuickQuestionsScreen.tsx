@@ -21,6 +21,7 @@ type QuestionDraft = QuickQuestion | null
 const emptyFilters = {
   type: 'expense' as const,
   categoryIds: null,
+  paymentMethods: null,
   tags: null,
   dateFrom: null,
   dateTo: null,

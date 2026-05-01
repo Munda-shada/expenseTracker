@@ -1,4 +1,4 @@
-import { Category, ConfidenceLevel, EntryType } from './types'
+import { Category, ConfidenceLevel, EntryType, PaymentMethod } from './types'
 import { getExplicitTags, inferEntryTags, refineCategoryIdsForInput } from './tagUtils'
 import { getTodayString, getYesterdayString } from './utils'
 import {
@@ -8,11 +8,13 @@ import {
   normalizeHinglish,
   stripHinglishFiller,
 } from './hinglish'
+import { getEntryPaymentMethod } from './paymentMethods'
 
 export interface LocalParsedEntry {
   type: EntryType
   amount: number
   categoryIds: string[]
+  paymentMethod: PaymentMethod
   date: string
   note: string
   tags: string[]
@@ -92,6 +94,7 @@ export function parseLocalEntry(rawInput: string, categories: Category[]): Local
     type,
     amount,
     categoryIds,
+    paymentMethod: getEntryPaymentMethod(input),
     date: includesAnyWord(lower, HINGLISH_YESTERDAY_WORDS)
       ? getYesterdayString()
       : getTodayString(),

@@ -4,10 +4,11 @@ import { useState } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { addEntry } from '@/lib/db'
 import { getTodayString } from '@/lib/utils'
-import { Category, Entry, EntryType } from '@/lib/types'
+import { Category, DEFAULT_PAYMENT_METHOD, Entry, EntryType, PaymentMethod } from '@/lib/types'
 import TagInput from '@/components/TagInput'
 import { useModalDismiss } from '@/lib/useModalDismiss'
 import ModalShell from '@/components/ModalShell'
+import PaymentMethodInput from '@/components/PaymentMethodInput'
 
 interface Props {
   categories: Category[]
@@ -25,6 +26,7 @@ export default function ManualEntryModal({
   const [type, setType] = useState<EntryType>('expense')
   const [amount, setAmount] = useState('')
   const [categoryIds, setCategoryIds] = useState<string[]>([])
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(DEFAULT_PAYMENT_METHOD)
   const [date, setDate] = useState(getTodayString())
   const [note, setNote] = useState(initialRawInput.slice(0, 100))
   const [tags, setTags] = useState<string[]>([])
@@ -35,6 +37,7 @@ export default function ManualEntryModal({
     type !== 'expense' ||
     amount.trim() !== '' ||
     categoryIds.length > 0 ||
+    paymentMethod !== DEFAULT_PAYMENT_METHOD ||
     note !== initialRawInput.slice(0, 100) ||
     tags.length > 0
   const { requestClose, backdropProps } = useModalDismiss({ isDirty, onClose: onCancel })
@@ -56,6 +59,7 @@ export default function ManualEntryModal({
       type,
       amount: Number(amount),
       categoryIds,
+      paymentMethod,
       tags,
       date,
       note: note.trim(),
@@ -178,6 +182,8 @@ export default function ManualEntryModal({
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Tags</p>
             <TagInput tags={tags} onChange={setTags} />
           </div>
+
+          <PaymentMethodInput value={paymentMethod} onChange={setPaymentMethod} />
 
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Note</p>

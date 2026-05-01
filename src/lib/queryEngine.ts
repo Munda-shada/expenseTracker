@@ -4,12 +4,13 @@ import {
   getCategories,
   getBudgets,
 } from './db'
-import { Entry } from './types'
+import { Entry, PaymentMethod, getPaymentMethodLabel } from './types'
 import { getTodayString } from './utils'
 
 export interface QueryFilter {
   type: 'expense' | 'income' | 'all'
   categoryIds: string[] | null
+  paymentMethods: PaymentMethod[] | null
   tags: string[] | null
   dateFrom: string | null
   dateTo: string | null
@@ -57,6 +58,13 @@ export async function runQuery(
     )
   }
 
+  // Apply payment method filter
+  if (filters.paymentMethods && filters.paymentMethods.length > 0) {
+    entries = entries.filter((e) =>
+      e.paymentMethod ? filters.paymentMethods!.includes(e.paymentMethod) : false
+    )
+  }
+
   // Apply tag filter
   if (filters.tags && filters.tags.length > 0) {
     entries = entries.filter((e) =>
@@ -71,10 +79,11 @@ export async function runQuery(
     entries = entries.filter((e) => {
       const matchNote = e.note.toLowerCase().includes(q)
       const matchRaw = e.rawInput.toLowerCase().includes(q)
+      const matchPayment = getPaymentMethodLabel(e.paymentMethod).toLowerCase().includes(q)
       const matchCat = e.categoryIds.some((id) =>
         cats.find((c) => c.id === id)?.name.toLowerCase().includes(q)
       )
-      return matchNote || matchRaw || matchCat
+      return matchNote || matchRaw || matchPayment || matchCat
     })
   }
 

@@ -2,12 +2,40 @@
 export type EntryType = 'expense' | 'income'
 export type ConfidenceLevel = 'high' | 'medium' | 'low'
 export type EntrySource = 'ai' | 'manual' | 'quickAdd' | 'bulk'
+export type PaymentMethod =
+  | 'upi'
+  | 'cash'
+  | 'sbi-credit-card'
+  | 'icici-credit-card'
+  | 'debit-card'
+  | 'bank-transfer'
+  | 'wallet'
+  | 'other'
+
+export const DEFAULT_PAYMENT_METHOD: PaymentMethod = 'upi'
+
+export const PAYMENT_METHOD_OPTIONS: Array<{ value: PaymentMethod; label: string }> = [
+  { value: 'upi', label: 'UPI' },
+  { value: 'cash', label: 'Cash' },
+  { value: 'sbi-credit-card', label: 'SBI Credit Card' },
+  { value: 'icici-credit-card', label: 'ICICI Credit Card' },
+  { value: 'debit-card', label: 'Debit Card' },
+  { value: 'bank-transfer', label: 'Bank Transfer' },
+  { value: 'wallet', label: 'Wallet' },
+  { value: 'other', label: 'Other' },
+]
+
+export function getPaymentMethodLabel(method: PaymentMethod | null | undefined): string {
+  if (!method) return 'Not set'
+  return PAYMENT_METHOD_OPTIONS.find((option) => option.value === method)?.label ?? 'Not set'
+}
 
 export interface Entry {
   id: string
   type: EntryType
   amount: number
   categoryIds: string[]
+  paymentMethod: PaymentMethod | null
   tags: string[]
   date: string           // YYYY-MM-DD
   note: string
@@ -129,6 +157,7 @@ export type QuickQuestionOperation = 'sum' | 'count' | 'list' | 'average' | 'max
 export interface QuickQuestionFilter {
   type: 'expense' | 'income' | 'all'
   categoryIds: string[] | null
+  paymentMethods: PaymentMethod[] | null
   tags: string[] | null
   dateFrom: string | null
   dateTo: string | null
@@ -157,6 +186,7 @@ export interface RecurringRule {
     type: EntryType
     amount: number
     categoryIds: string[]
+    paymentMethod: PaymentMethod | null
     tags: string[]
     note: string
   }

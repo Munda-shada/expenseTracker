@@ -38,7 +38,7 @@ import {
   updatePendingLogStatus,
   setSetting,
 } from '@/lib/db'
-import { Entry, Category, EntrySource, RecurringRule, QuickQuestion, FinancialGoal } from '@/lib/types'
+import { Entry, Category, EntrySource, RecurringRule, QuickQuestion, FinancialGoal, PaymentMethod } from '@/lib/types'
 import {
   getTodayString,
   getYesterdayString,
@@ -61,6 +61,7 @@ import { inferEntryTags, refineCategoryIdsForInput } from '@/lib/tagUtils'
 import { HINGLISH_QUERY_STARTERS, includesAnyWord } from '@/lib/hinglish'
 import { buildSpendingInsights, getPreviousMonthRangeForInsights, SpendingInsight } from '@/lib/insightsEngine'
 import { canRetryPendingLog, getPendingLogStatus, getPendingLogStatusLabel } from '@/lib/offlineRetry'
+import { getEntryPaymentMethod } from '@/lib/paymentMethods'
 
 type Mode = 'log' | 'ask'
 type PlanningPanel = 'plan' | 'bills' | 'goals'
@@ -156,6 +157,7 @@ interface ParsedEntry {
   type: 'expense' | 'income'
   amount: number
   categoryIds: string[]
+  paymentMethod?: PaymentMethod | null
   date: string
   note: string
   tags: string[]
@@ -423,6 +425,7 @@ export default function HomeScreen({
     return {
       ...parsed,
       categoryIds,
+      paymentMethod: parsed.paymentMethod ?? getEntryPaymentMethod(rawInput),
       tags: inferEntryTags(rawInput, categories, categoryIds, parsed.tags),
     }
   }, [categories])
@@ -741,6 +744,7 @@ export default function HomeScreen({
       type: entry.type,
       amount: entry.amount,
       categoryIds: entry.categoryIds,
+      paymentMethod: entry.paymentMethod ?? null,
       date: getTodayString(),
       note: entry.note,
       tags: entry.tags,

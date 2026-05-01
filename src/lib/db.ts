@@ -4,7 +4,7 @@ import {
   Entry, Category, Tag, Budget,
   LentBorrowed, Correction, QuickAddTile,
   ChatMessage, Settings, ReconciliationCheck, RecurringRule,
-  QuickQuestion, SyncTombstone, SyncConflict
+  QuickQuestion, SyncTombstone, SyncConflict, DEFAULT_PAYMENT_METHOD
 } from './types'
 import { normalizeTag } from './tagUtils'
 import { formatLocalDateString, getTodayString } from './utils'
@@ -214,6 +214,7 @@ const makeQuickQuestionDefaults = (): QuickQuestion[] => {
       filters: {
         type: 'expense',
         categoryIds: null,
+        paymentMethods: null,
         tags: null,
         dateFrom: monthStart,
         dateTo: today,
@@ -233,6 +234,7 @@ const makeQuickQuestionDefaults = (): QuickQuestion[] => {
       filters: {
         type: 'expense',
         categoryIds: ['cat-food'],
+        paymentMethods: null,
         tags: null,
         dateFrom: monthStart,
         dateTo: today,
@@ -252,6 +254,7 @@ const makeQuickQuestionDefaults = (): QuickQuestion[] => {
       filters: {
         type: 'expense',
         categoryIds: null,
+        paymentMethods: null,
         tags: null,
         dateFrom: weekStartString,
         dateTo: today,
@@ -271,6 +274,7 @@ const makeQuickQuestionDefaults = (): QuickQuestion[] => {
       filters: {
         type: 'expense',
         categoryIds: null,
+        paymentMethods: null,
         tags: null,
         dateFrom: monthStart,
         dateTo: today,
@@ -668,6 +672,7 @@ export async function addPendingLog(rawInput: string): Promise<Entry> {
     type: 'expense',
     amount: 0,
     categoryIds: ['cat-other'],
+    paymentMethod: DEFAULT_PAYMENT_METHOD,
     tags: [],
     date: getTodayString(),
     note: rawInput.slice(0, 100),

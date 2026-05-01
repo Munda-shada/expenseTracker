@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Bolt, Plus, Trash2 } from 'lucide-react'
-import { QuickAddTile, Category, Entry } from '@/lib/types'
+import { DEFAULT_PAYMENT_METHOD, QuickAddTile, Category, Entry } from '@/lib/types'
 import { getQuickAddTiles, upsertQuickAddTile, deleteQuickAddTile, addEntry } from '@/lib/db'
 import { getTodayString, formatCurrency } from '@/lib/utils'
 import { v4 as uuidv4 } from 'uuid'
@@ -49,6 +49,7 @@ export default function QuickAddTileRow({ categories, onSaved, onShowToast, onNa
       type: 'expense',
       amount,
       categoryIds: tile.categoryIds,
+      paymentMethod: DEFAULT_PAYMENT_METHOD,
       tags: tile.tags,
       date: getTodayString(),
       note: tile.note,

@@ -2,18 +2,20 @@
 
 import { useState } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { Category, Entry, EntryType, ConfidenceLevel } from '@/lib/types'
+import { Category, DEFAULT_PAYMENT_METHOD, Entry, EntryType, ConfidenceLevel, PaymentMethod, getPaymentMethodLabel } from '@/lib/types'
 import { addEntry, addCorrection } from '@/lib/db'
 import { formatCurrency } from '@/lib/utils'
 import TagInput from '@/components/TagInput'
 import { useModalDismiss } from '@/lib/useModalDismiss'
 import ModalShell from '@/components/ModalShell'
+import PaymentMethodInput from '@/components/PaymentMethodInput'
 
 
 interface ParsedEntry {
   type: EntryType
   amount: number
   categoryIds: string[]
+  paymentMethod?: PaymentMethod | null
   date: string
   note: string
   tags: string[]
@@ -59,6 +61,7 @@ export default function BulkConfirmModal({
     type: row.type,
     amount: row.amount,
     categoryIds: row.categoryIds,
+    paymentMethod: row.paymentMethod ?? DEFAULT_PAYMENT_METHOD,
     date: row.date,
     note: row.note,
     tags: row.tags,
@@ -102,6 +105,7 @@ export default function BulkConfirmModal({
         type: row.type,
         amount: row.amount,
         categoryIds: row.categoryIds,
+        paymentMethod: row.paymentMethod ?? DEFAULT_PAYMENT_METHOD,
         date: row.date,
         note: row.note,
         tags: row.tags,
@@ -112,6 +116,7 @@ export default function BulkConfirmModal({
         type: savedRow.type,
         amount: Number(savedRow.amount),
         categoryIds: savedRow.categoryIds,
+        paymentMethod: savedRow.paymentMethod ?? DEFAULT_PAYMENT_METHOD,
         tags: savedRow.tags,
         date: savedRow.date,
         note: savedRow.note,
@@ -133,6 +138,9 @@ export default function BulkConfirmModal({
         if (Number(savedRow.amount) !== original.amount) correctedFields.push('amount')
         if (JSON.stringify(savedRow.categoryIds) !== JSON.stringify(original.categoryIds)) {
           correctedFields.push('categoryIds')
+        }
+        if ((savedRow.paymentMethod ?? DEFAULT_PAYMENT_METHOD) !== (original.paymentMethod ?? DEFAULT_PAYMENT_METHOD)) {
+          correctedFields.push('paymentMethod')
         }
         if (savedRow.date !== original.date) correctedFields.push('date')
         if (savedRow.note !== original.note) correctedFields.push('note')
@@ -219,6 +227,7 @@ export default function BulkConfirmModal({
                         {formatCurrency(Number(row.amount))}
                         <span className="text-gray-400 font-normal ml-1 text-xs">
                           · {row.categoryIds.map(getCategoryName).join(', ')}
+                          · {getPaymentMethodLabel(row.paymentMethod ?? DEFAULT_PAYMENT_METHOD)}
                         </span>
                       </p>
                       <p className="text-xs text-gray-400 truncate">{row.note}</p>
@@ -334,6 +343,12 @@ export default function BulkConfirmModal({
                           ))}
                       </div>
                     </div>
+
+                    <PaymentMethodInput
+                      value={row.paymentMethod ?? DEFAULT_PAYMENT_METHOD}
+                      onChange={(paymentMethod) => updateRow(row.rowId, { paymentMethod })}
+                      compact
+                    />
 
                     {/* Note */}
                     <div>

@@ -12,6 +12,7 @@ import {
   ReconciliationCheck,
   Settings,
   Tag,
+  getPaymentMethodLabel,
 } from './types'
 
 const BACKUP_FORMAT_VERSION = 1
@@ -131,6 +132,7 @@ export async function exportEntriesCsv(options: { period?: ExportPeriod } = {}):
     'type',
     'amount',
     'categories',
+    'paymentMethod',
     'tags',
     'note',
     'rawInput',
@@ -144,6 +146,7 @@ export async function exportEntriesCsv(options: { period?: ExportPeriod } = {}):
     entry.type,
     entry.amount,
     entry.categoryIds.map((id) => categoryById.get(id) ?? id),
+    getPaymentMethodLabel(entry.paymentMethod),
     entry.tags,
     entry.note,
     entry.rawInput,
@@ -209,6 +212,7 @@ export async function exportEntriesPdf(options: { period?: ExportPeriod } = {}):
         <td>${htmlEscape(entry.type)}</td>
         <td class="amount">${htmlEscape(entry.amount)}</td>
         <td>${htmlEscape(categoriesText)}</td>
+        <td>${htmlEscape(getPaymentMethodLabel(entry.paymentMethod))}</td>
         <td>${htmlEscape(entry.tags.join(', '))}</td>
         <td>${htmlEscape(entry.note)}</td>
         <td>${htmlEscape(entry.source)}</td>
@@ -227,6 +231,7 @@ export async function exportEntriesPdf(options: { period?: ExportPeriod } = {}):
       <td>${htmlEscape(entry.date)}</td>
       <td>${htmlEscape(entry.note || entry.rawInput)}</td>
       <td>${htmlEscape(entry.categoryIds.map((id) => categoryById.get(id) ?? id).join(', '))}</td>
+      <td>${htmlEscape(getPaymentMethodLabel(entry.paymentMethod))}</td>
       <td class="amount">${htmlEscape(formatCurrency(entry.amount))}</td>
     </tr>
   `).join('')
@@ -274,8 +279,8 @@ export async function exportEntriesPdf(options: { period?: ExportPeriod } = {}):
         </table>
         <h2>Top expenses</h2>
         <table>
-          <thead><tr><th>Date</th><th>Note</th><th>Categories</th><th>Amount</th></tr></thead>
-          <tbody>${topExpenseRows || '<tr><td colspan="4">No expenses.</td></tr>'}</tbody>
+          <thead><tr><th>Date</th><th>Note</th><th>Categories</th><th>Payment</th><th>Amount</th></tr></thead>
+          <tbody>${topExpenseRows || '<tr><td colspan="5">No expenses.</td></tr>'}</tbody>
         </table>
         <h2>Top tags</h2>
         <p>${tagText}</p>
@@ -287,6 +292,7 @@ export async function exportEntriesPdf(options: { period?: ExportPeriod } = {}):
               <th>Type</th>
               <th>Amount</th>
               <th>Categories</th>
+              <th>Payment</th>
               <th>Tags</th>
               <th>Note</th>
               <th>Source</th>

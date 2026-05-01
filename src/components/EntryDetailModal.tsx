@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Entry, Category, RecurringFrequency } from '@/lib/types'
+import { Entry, Category, RecurringFrequency, getPaymentMethodLabel } from '@/lib/types'
 import { formatCurrency, formatDisplayDate, getTodayString } from '@/lib/utils'
 import { deleteEntry, saveRecurringRule } from '@/lib/db'
 import { useModalDismiss } from '@/lib/useModalDismiss'
@@ -56,6 +56,7 @@ export default function EntryDetailModal({
         type: entry.type,
         amount: entry.amount,
         categoryIds: entry.categoryIds,
+        paymentMethod: entry.paymentMethod ?? null,
         tags: entry.tags,
         note: entry.note || getCategoryName(entry.categoryIds[0]),
       },
@@ -159,6 +160,19 @@ export default function EntryDetailModal({
                 </span>
               ))}
             </div>
+          </div>
+
+          {/* Payment method */}
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+              Payment Method
+            </p>
+            <button
+              onClick={() => onNavigateToHistory?.({ paymentMethod: entry.paymentMethod ?? 'unspecified' })}
+              className="rounded-full bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-600"
+            >
+              {getPaymentMethodLabel(entry.paymentMethod)}
+            </button>
           </div>
 
           {/* Tags */}

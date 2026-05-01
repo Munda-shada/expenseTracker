@@ -70,6 +70,7 @@ Rules:
 - amount: number in INR (no commas, no ₹ symbol)
 - type: "expense" or "income"
 - categoryIds: array of category IDs from the list above. Use the category for what was paid for; if the user paid auto/cab/bus/train/petrol to go somewhere, category should be Travel, and the destination/activity should be a tag instead of another category.
+- paymentMethod: one of "upi", "cash", "sbi-credit-card", "icici-credit-card", "debit-card", "bank-transfer", "wallet", "other". Infer only when mentioned. Use "upi" for gpay/google pay/phonepe/paytm upi/bhim. Use "sbi-credit-card" for SBI card/credit card if no bank is clear. Use "icici-credit-card" for ICICI card.
 - date: YYYY-MM-DD format. "today" = ${today}, "yesterday" = ${yesterday}
 - note: short description max 100 chars
 - tags: context labels for why/where/what the spend was connected to, normalized lowercase with hyphens and no special chars. Include explicit #tags, the chosen category name, and useful context words. Example: "auto rs 100 for badminton" => categoryIds ["cat-travel"], tags ["travel","badminton"].
@@ -86,6 +87,7 @@ Return ONLY valid JSON matching this structure exactly. No explanation. No markd
   "type": "expense" | "income",
   "amount": number,
   "categoryIds": string[],
+  "paymentMethod": "upi" | "cash" | "sbi-credit-card" | "icici-credit-card" | "debit-card" | "bank-transfer" | "wallet" | "other",
   "date": "YYYY-MM-DD",
   "note": string,
   "tags": string[],

@@ -62,6 +62,7 @@ ${historyBlock}Translate the query into this exact JSON structure:
   "filters": {
     "type": "expense" | "income" | "all",
     "categoryIds": string[] | null,
+    "paymentMethods": ("upi" | "cash" | "sbi-credit-card" | "icici-credit-card" | "debit-card" | "bank-transfer" | "wallet" | "other")[] | null,
     "tags": string[] | null,
     "dateFrom": "YYYY-MM-DD" | null,
     "dateTo": "YYYY-MM-DD" | null,
@@ -84,6 +85,7 @@ Rules:
 - naturalContext: short phrase describing the query e.g. "Food expenses this month"
 - Use conversation history to resolve "last month", "that category", "and last week?" follow-ups
 - categoryIds: match category names to IDs from the list above, null if no category filter
+- paymentMethods: match payment words. Use "upi" for UPI/GPay/PhonePe/Paytm UPI, "sbi-credit-card" for SBI card, "icici-credit-card" for ICICI card, null if no payment filter
 - If query mentions a tag like #goa-trip, put it in tags array
 
 Examples:
